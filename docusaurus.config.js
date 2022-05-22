@@ -60,7 +60,7 @@ const config = {
         title: 'Noob Tech Note',
         logo: {
           alt: 'Noob Tech Note',
-          src: 'img/logo.svg',
+          src: 'img/icon-144.png',
         },
         items: [
           {to: '/docs/sg', label: 'Study Group', position: 'left'},
