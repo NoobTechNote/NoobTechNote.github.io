@@ -16,7 +16,7 @@ $ yarn start
 
 This command starts a local development server and opens up a browser window. Most changes are reflected live without having to restart the server.
 
-### Build
+### Build for static site
 
 ```
 $ yarn build
@@ -24,18 +24,10 @@ $ yarn build
 
 This command generates static content into the `build` directory and can be served using any static contents hosting service.
 
-### Deployment
+# Project Structure
 
-Using SSH:
+Study group document placed in the `main` branch under `/docs/sg/`
 
-```
-$ USE_SSH=true yarn deploy
-```
+Has ability to write under Markdown (.md) or MDX (.mdx)
 
-Not using SSH:
-
-```
-$ GIT_USER=<Your GitHub username> yarn deploy
-```
-
-If you are using GitHub pages for hosting, this command is a convenient way to build the website and push to the `gh-pages` branch.
+Check [Docusaurus Markdown Features](https://docusaurus.io/docs/markdown-features) for detail
