@@ -1,0 +1,27 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches:
+      - main
+jobs:
+  build:
+    name: Build and Deploy Github Pages
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 16.x
+          cache: yarn
+      - name: Build website
+        working-directory: ./
+        run: |
+          yarn install --frozen-lockfile
+          yarn build
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          personal_token:  ${{ secrets.DEPLOY_TOKEN }}
+          publish_dir: ./build
+          publish_branch: publish
