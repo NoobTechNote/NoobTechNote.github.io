@@ -117,16 +117,85 @@ API設計來是給外部地方三方使用的
 
 ## 1.4設計優美的WebAPI的重要性
 
-* 優美的API
-    * 易於使用
-    * 便於修改
-    * 健壯
-    * 不怕公之於眾
+* 易於使用
+    * API的使用者是開發人員
+    * 開發人員承受的壓力對軟體品質會有影響
+    * 如果API難以使用，那公開API的意義也就不大了
+* 便於修改
+    * 被第三方調用 - 很難不告知就做breaking changes
+    * 在API修改時盡可能不影響既有使用者
+* 健壯
+    * 畢竟也是一種Web Application
+    * 需充分考量安全問題
+* 不怕公之於眾
+    * 如果服務本身魅力無窮，API就算設計的很爛可能開發者還是不得不用
+    * 但爛到一個程度，可能會直接害你聘不到好的開發者。這種害怕會使團隊陷入負面循環
 
 ## 1.5如何美化WebAPI
 
+這本書的主旨 - 請大家好好期待(?)
+
+* 依照規範設計
+* 遵守事實標準
+    * 『中學二年級的學生要做出前所未見的暢銷歌曲』
+        * 有機會，但不高
+    * 設計規範能夠成為標準
+        * 一定有他的理由
+    * 瞭解各種標準設計背後的原因以及優缺點
+    * 利用前人以及社群的力量
+
 ## 1.6 REST與WebAPI
+
+### REST
+
+* Representational state transfer (具代表性的狀態轉移)
+    * 符合REST精神的API設計稱為RESTful API
+    * 沒有規定REST只能用在HTTP，只是在HTTP比較流行而已
+* Roy Fielding (2000)的[博士論文](https://www.ics.uci.edu/~fielding/pubs/dissertation/rest_arch_style.htm)
+* 有六個要素
+    * Uniform interface (一致的介面)
+    * Client–server (用戶/伺服架構)
+    * Stateless (無狀態)
+    * Cacheable (可被快取)
+    * Layered system (分層系統)
+    * Code on demand (依照需要回應)
+
+* 符合REST精神的Web API
+    * **不能在URL中使用動詞**
+    * v1, v2等版本編號並不被允許
+
+### Example of RESTful API
+| HTTP method | URL        |                            |
+| ----------- | ---------- | -------------------------- |
+| GET         | /product   | Product List               |
+| GET         | /product/1 | Product 1 Detail           |
+| POST        | /product   | Create a product           |
+| PUT/PATCH   | /product/1 | Update detail of product 1 |
+| DELETE      | /product/1 | Delete product 1           |
+
+
+:::info Discussion
+如果要對product清單，使用多個條件做搜尋要怎麼辦？
+:::
+
+:::info Discussion
+使用REST風格設計的API一定比較好，對嗎？
+:::
 
 ## 1.7作為目標對象的開發人員數量與API的設計思想
 
-## 1.8小結
+### LSUD與SSKD
+
+Netflix的API工程總監Daniel Jacobson，在[The future of API design: The orchestration layer](https://thenextweb.com/news/future-api-design-orchestration-layer)中提到的，設計API要服務的兩個族群：
+* LSUD (Large Set of Unknown Developers)
+    * 公開的API，任何人都能使用
+    * 文件要清楚透明
+    * 要盡可能設計的通用
+* SSKD (Small Set of Known Developers)
+    * 公司內的少量族群使用
+    * 能夠使用的人有限
+    * 讓這些少量族群易於上手就夠了
+
+:::caution
+了解你的客戶才有辦法設計好產品
+:::
