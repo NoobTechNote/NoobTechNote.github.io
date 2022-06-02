@@ -45,6 +45,7 @@ sidebar_position: 1
        * 注意單字的復數和過去式：data能加s嗎？datas
     3. 沒有大小寫混用的URL，不能駝峰式！？
     4. 修改方便的URL
+
         | ID rnage        | URL                  |
         | --------------- | -------------------- |
         |                 | /v1/items/123456     | 
@@ -187,6 +188,7 @@ bad example:
   * 不使用空格及需要編碼的字符
     * Percent Encoding。 %E3%81%82 中文字編碼
   * 使用連接符來連接多個單詞
+
     |   Brand  |  Rule | URL                                  |
     | -------- | ----- | ------------------------------------ |
     | Twitter  | 蛇形法 | /statuses/user_timeline              |
