@@ -84,20 +84,6 @@ response = requests.get(api_url)
 response.json()
 ```
 
-:::info Discussion
-  * 串接某專案API， get_list 該用 GET 全都用 POST ?
-  * GET point 的 query parameters 不能 optional ?
-:::
-
-## 2.3.2 POST方法
-
-```python
-import requests
-api_url = "https://www.dating.com/friends/1"
-response = requests.get(api_url)
-response.json()
-```
-
 ```json
 [
    {
@@ -115,7 +101,12 @@ response.json()
 ]
 ```
 
-## 2.3.3 PUT方法
+:::info Discussion
+  * 串接某專案API， get_list 該用 GET 全都用 POST ?
+  * GET point 的 query parameters 不能 optional ?
+:::
+
+## 2.3.2 POST方法
 
 ```json
 {
@@ -129,6 +120,21 @@ response.json()
 import requests
 api_url = "https://www.dating.com/questions"
 questions = {"userId":1, "id": 10, "questions":"妳覺得男方年收入多少才達到結婚門檻"}
+response = requests.post(api_url, json=questions)
+response.json()
+
+response.status_code
+```
+
+## 2.3.3 PUT方法
+
+```python
+import requests
+api_url = "https://www.dating.com/questions/10"
+response = requests.get(api_url)
+response.json()
+
+questions = {"userId":1, "id": 10, "questions":"妳覺得男方年收入多少才達到結婚門檻?"}
 response = requests.post(api_url, json=questions)
 response.json()
 
