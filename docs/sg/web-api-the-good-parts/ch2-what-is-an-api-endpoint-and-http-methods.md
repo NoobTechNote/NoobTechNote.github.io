@@ -187,6 +187,7 @@ bad example:
   * 不使用空格及需要編碼的字符
     * Percent Encoding。 %E3%81%82 中文字編碼
   * 使用連接符來連接多個單詞
+  
     |   Brand  |  Rule | URL                                  |
     | -------- | ----- | ------------------------------------ |
     | Twitter  | 蛇形法 | /statuses/user_timeline              |
