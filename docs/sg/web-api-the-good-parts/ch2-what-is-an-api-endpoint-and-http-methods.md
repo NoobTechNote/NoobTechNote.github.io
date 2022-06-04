@@ -1,7 +1,7 @@
 ---
 title: "Ch2:  What is an API Endpoint and HTTP methods ?"
 sidebar_label: "Ch2: What is an API Endpoint and HTTP methods ?"
-sidebar_position: 1
+sidebar_position: 2
 ---
 
 ## 思考如何設計 open sourse API endpoint
@@ -48,7 +48,7 @@ sidebar_position: 1
 
         | ID rnage        | URL                  |
         | --------------- | -------------------- |
-        |                 | /v1/items/123456     | 
+        |                 | /v1/items/123456     |
         | 1 ~ 300000      | /v1/items/alpha/:id  |
         | 400001 ~ 500000 | /v1/items/beta/:id   |
         | 500001 ~ 700000 | /v1/items/garmma/:id |
@@ -59,22 +59,22 @@ sidebar_position: 1
         *  POST `https://www.dating.com/friend/100/message` -> `https://www.dating.com/friends/100/message`
 
 :::info Discussion
-API point name: save, update, upload 
+API point name: save, update, upload
 :::
 
 ## 2.3 HTTP方法和端點
 
 | HTTP method | Description                            |
 | ----------- | -------------------------------------- |
-| GET         | Retrieve an existing resource.         | 
+| GET         | Retrieve an existing resource.         |
 | POST        | Create a new resource.                 |
-| PUT         | Update an existing resource.           | 
+| PUT         | Update an existing resource.           |
 | PATCH       | Partially update an existing resource. |
 | DELETE      | Delete a resource.                     |
 
 ## 2.3.1 GET方法
 
-* GET is a read-only 
+* GET is a read-only
 * 禁止GET修改 server handle
 
 ```python
@@ -166,7 +166,7 @@ response.status_code
 ```
 
 :::info Discussion
-    * X-HTTP-Method-Override 
+    * X-HTTP-Method-Override
 :::
 
 ## 2.4 API端點的設計
@@ -181,7 +181,7 @@ response.status_code
 
 :::info Discussion
 endpoint 一樣，method 不一樣，即可代表不同業務邏輯？
-bad example: 
+bad example:
   * /v1/query_users
   * /v1/update_users
 :::
