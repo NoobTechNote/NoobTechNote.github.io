@@ -1,7 +1,7 @@
 ---
 title: "Ch2:  What is an API Endpoint and HTTP methods ?"
 sidebar_label: "Ch2: What is an API Endpoint and HTTP methods ?"
-sidebar_position: 1
+sidebar_position: 2
 ---
 
 ## 思考如何設計 open sourse API endpoint
@@ -45,9 +45,10 @@ sidebar_position: 1
        * 注意單字的復數和過去式：data能加s嗎？datas
     3. 沒有大小寫混用的URL，不能駝峰式！？
     4. 修改方便的URL
+
         | ID rnage        | URL                  |
         | --------------- | -------------------- |
-        |                 | /v1/items/123456     | 
+        |                 | /v1/items/123456     |
         | 1 ~ 300000      | /v1/items/alpha/:id  |
         | 400001 ~ 500000 | /v1/items/beta/:id   |
         | 500001 ~ 700000 | /v1/items/garmma/:id |
@@ -58,41 +59,27 @@ sidebar_position: 1
         *  POST `https://www.dating.com/friend/100/message` -> `https://www.dating.com/friends/100/message`
 
 :::info Discussion
-API point name: save, update, upload 
+API point name: save, update, upload
 :::
 
 ## 2.3 HTTP方法和端點
 
 | HTTP method | Description                            |
 | ----------- | -------------------------------------- |
-| GET         | Retrieve an existing resource.         | 
+| GET         | Retrieve an existing resource.         |
 | POST        | Create a new resource.                 |
-| PUT         | Update an existing resource.           | 
+| PUT         | Update an existing resource.           |
 | PATCH       | Partially update an existing resource. |
 | DELETE      | Delete a resource.                     |
 
 ## 2.3.1 GET方法
 
-* GET is a read-only 
+* GET is a read-only
 * 禁止GET修改 server handle
 
 ```python
 import requests
 api_url = "https://www.dating.com/friends"
-response = requests.get(api_url)
-response.json()
-```
-
-:::info Discussion
-  * 串接某專案API， get_list 該用 GET 全都用 POST ?
-  * GET point 的 query parameters 不能 optional ?
-:::
-
-## 2.3.2 POST方法
-
-```python
-import requests
-api_url = "https://www.dating.com/friends/1"
 response = requests.get(api_url)
 response.json()
 ```
@@ -114,7 +101,12 @@ response.json()
 ]
 ```
 
-## 2.3.3 PUT方法
+:::info Discussion
+  * 串接某專案API， get_list 該用 GET 全都用 POST ?
+  * GET point 的 query parameters 不能 optional ?
+:::
+
+## 2.3.2 POST方法
 
 ```json
 {
@@ -128,6 +120,21 @@ response.json()
 import requests
 api_url = "https://www.dating.com/questions"
 questions = {"userId":1, "id": 10, "questions":"妳覺得男方年收入多少才達到結婚門檻"}
+response = requests.post(api_url, json=questions)
+response.json()
+
+response.status_code
+```
+
+## 2.3.3 PUT方法
+
+```python
+import requests
+api_url = "https://www.dating.com/questions/10"
+response = requests.get(api_url)
+response.json()
+
+questions = {"userId":1, "id": 10, "questions":"妳覺得男方年收入多少才達到結婚門檻?"}
 response = requests.post(api_url, json=questions)
 response.json()
 
@@ -159,7 +166,7 @@ response.status_code
 ```
 
 :::info Discussion
-    * X-HTTP-Method-Override 
+    * X-HTTP-Method-Override
 :::
 
 ## 2.4 API端點的設計
@@ -174,7 +181,7 @@ response.status_code
 
 :::info Discussion
 endpoint 一樣，method 不一樣，即可代表不同業務邏輯？
-bad example: 
+bad example:
   * /v1/query_users
   * /v1/update_users
 :::
@@ -187,7 +194,6 @@ bad example:
   * 不使用空格及需要編碼的字符
     * Percent Encoding。 %E3%81%82 中文字編碼
   * 使用連接符來連接多個單詞
-  
     |   Brand  |  Rule | URL                                  |
     | -------- | ----- | ------------------------------------ |
     | Twitter  | 蛇形法 | /statuses/user_timeline              |
@@ -196,3 +202,10 @@ bad example:
     | LinkedIn | 脊柱法 | /v1/people-search                    |
     | Bit.ly   | 蛇形法 | /v3/user/popular_earned_by_clicks    |
     | Disqus   | 駝峰法 | /api/3.0/applications/listUsage.json |
+
+## 2-5 搜尋與參數查詢的設計
+
+| 服務名稱  | 取得資料量     |    取得位置(相對)     |   取得位置(絕對)      |
+| ----------- | ------------ | ---------------------- |  ------------------- |
+| GitHub   |  per_page   |      | Get users list         |
+| POST        | /v1/users    | Create a user        | Create a user        |
