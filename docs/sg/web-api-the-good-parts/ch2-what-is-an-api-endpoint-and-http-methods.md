@@ -205,7 +205,7 @@ bad example:
     | Disqus   | 駝峰法 | /api/3.0/applications/listUsage.json |
 
 ## 2-5 搜尋與參數查詢的設計
-獲取資源列表的 Endpoint 同時具備搜尋功能。
+> 獲取資源列表的 Endpoint 同時具備搜尋功能。
 
 問題：GET 方法裡面，如何滿足較為複雜的搜尋場景？
 
@@ -395,7 +395,8 @@ GET /company/1337:(id,name,description,industry)
 ```
 ### Resource Owner Password Credentials 模式
 於 request body 以表單的形式(`application/x-www-form-urlencoded`)，進行 UTF-8 編碼後發送。
-發送的內容須包含以下數據：
+
+發送的內容包含以下數據：
 
 | 鍵值(key)  | 內容   |   
 | ----------- | ------------ | 
@@ -464,7 +465,7 @@ OAuth 如何整合現有的系統驗證流程，如：資料庫內表的結構�
 Client 端透過 `refresh_token` 跟第三方服務申請新的 `access_token` (註：並非每個服務有提供 `refresh_token`)。
 
 申請新 `access_token`，可在 `grant_type` 參數裡指定 `refresh_token`，連同 `refresh_token` 一並發送給 server 端。
-```
+```jsx title="Refresh Token" 
 POST /oauth2/token HTTP1.1
 Host: api.sample.com
 Authorization: Basic <base64_code>
@@ -474,9 +475,19 @@ grant_type=refresh_token&refresh_token=<base64_code>
 ```
 
 ## 2.6.2 其他 Grant Type
-- Authorization Code、Implicit Code 被使用的情況:
+- Authorization Code、Implicit Code 適用的情況:
 第三方服務希望被允許訪問你的在線服務裡保存的用戶資訊。
-- Client Credentials
+- Client Credentials:
+> 適用於第三方想要訪問無需得到特定用戶許可的資訊時，無須提供用戶名&密碼
+
+```jsx title="Client Credentials" 
+POST /oauth2/token HTTP1.1
+Host: api.sample.com
+Authorization: Basic <base64_code>
+Content-Type: application/x-www-form-urlencoded
+
+grant_type=client_credentials
+```
 - 補充: 自身訊息的別名 (alias)：透過 API 訪問用戶自己的訊息，不再需要一個個指定用戶的 ID，使用 `self`, `me` 等 key words 表示用戶自己，透過 access token 獲取綁定的用戶資訊。
 
     | Service  | Key Words   |   Sample   |   
