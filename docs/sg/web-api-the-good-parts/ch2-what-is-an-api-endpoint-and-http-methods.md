@@ -476,7 +476,7 @@ grant_type=refresh_token&refresh_token=<base64_code>
 
 ## 2.6.2 其他 Grant Type
 - Authorization Code、Implicit Code 適用的情況:
-第三方服務希望被允許訪問你的在線服務裡保存的用戶資訊。
+> 第三方服務希望被允許訪問你的在線服務裡保存的用戶資訊。
 - Client Credentials:
 > 適用於第三方想要訪問無需得到特定用戶許可的資訊時，無須提供用戶名&密碼
 
@@ -488,7 +488,7 @@ Content-Type: application/x-www-form-urlencoded
 
 grant_type=client_credentials
 ```
-- 補充: 自身訊息的別名 (alias)：透過 API 訪問用戶自己的訊息，不再需要一個個指定用戶的 ID，使用 `self`, `me` 等 key words 表示用戶自己，透過 access token 獲取綁定的用戶資訊。
+- (補充) 自身訊息的別名 (alias)：透過 API 訪問用戶自己的訊息，不再需要一個個指定用戶的 ID，使用 `self`, `me` 等 key words 表示用戶自己，透過 access token 獲取綁定的用戶資訊。
 
     | Service  | Key Words   |   Sample   |   
     | ----------- | ------------ | ------------ | 
@@ -514,7 +514,7 @@ https://api.example.com/v1
 > 範例： 電商 mobile APP 的 API
 
 ## 2.9 HATEOAS & REST Level3 API
-Martin Fowler: 達成完美的 REST API 設計前，有下述幾種設計級別:
+Martin Fowler: 達成完美的 REST API 設計前，有下述幾種設計級別
 - REST LEVEL 0: 使用 HTTP
 - REST LEVEL 1:  引入資源的概念
 - REST LEVEL 2:  引入 HTTP 動詞
