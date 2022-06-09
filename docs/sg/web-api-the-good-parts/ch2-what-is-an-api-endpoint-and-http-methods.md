@@ -374,6 +374,7 @@ GET /company/1337:(id,name,description,industry)
 ## 2-6 登入與 OAuth 2.0
 常見於第三方公開的 API 驗證&授權 e.g. Facebook, Google, GitHub
 
+Resource: [OAuth 2.0 and OpenID Connect (video)](https://www.youtube.com/watch?v=996OiexHze0&t=1297s)
 ### 流程：圖 2-6
 
 ### 採用 OAuth 驗證的好處：
@@ -394,6 +395,10 @@ GET /company/1337:(id,name,description,industry)
 /oauth2/token
 ```
 ### Resource Owner Password Credentials 模式
+[WorkFlow](https://www.wikitechy.com/tutorials/oauth/oauth-resource-owner-password-credentials-grant-requests-and-response)
+
+適用情境: 公司的內部系統
+
 於 request body 以表單的形式(`application/x-www-form-urlencoded`)，進行 UTF-8 編碼後發送。
 
 發送的內容包含以下數據：
