@@ -228,7 +228,7 @@ GET /users?gender=male
 ```
 
 :::info Discussion
-怎樣的場合適合使用 query string? 
+怎樣的場合適合使用 query parameters? 
 :::
 
 ## 2.5.1 取得資料量 & 資料取得位置的查詢參數
@@ -283,7 +283,7 @@ limit=50&offset=100
 
 1. [Twitter](https://developer.twitter.com/en/docs/twitter-api/v1/tweets/timelines/guides/working-with-timelines) API 裡的 `max_id`：取得指定 `max_id` 值之前的所有資料
 2. Youtube API 的 `publish_before` / `publish_after`：取得指定的發布日期前/後的資料
-3. Tumblr API 的 `sinc_id` ：透過 `sinc_id` 判定資料(用戶關注其他用戶的所有動態)是否更新
+3. Tumblr API 的 `since_id` ：透過 `since_id` 判定資料(用戶關注其他用戶的所有動態)是否更新
 
 ## 2.5.4 用於過濾的參數
 
