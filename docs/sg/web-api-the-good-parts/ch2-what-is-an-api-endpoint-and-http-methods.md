@@ -282,8 +282,8 @@ limit=50&offset=100
 範例: 
 
 1. [Twitter](https://developer.twitter.com/en/docs/twitter-api/v1/tweets/timelines/guides/working-with-timelines) API 裡的 `max_id`：取得指定 `max_id` 值之前的所有資料
-2. Youtube API 的 `publish_before` / `publish_after`：取得指定的發布日期前/後的資料
-3. Tumblr API 的 `since_id` ：透過 `since_id` 判定資料(用戶關注其他用戶的所有動態)是否更新
+2. [Youtube](https://developers.google.com/youtube/v3/docs/search/list) 的 `publish_before` / `publish_after`：取得指定的發布日期前/後的資料
+3. [Tumblr](https://www.tumblr.com/docs/en/api/v2?language=pt_PT) API 的 `since_id` ：透過 `since_id` 判定資料(用戶關注其他用戶的所有動態)是否更新
 
 ## 2.5.4 用於過濾的參數
 
@@ -296,7 +296,7 @@ SNS 服務的 API 裡搜尋用戶列表的條件，以用戶名作為參數達�
 
 常見模式:
 - 單純的文字搜尋：用戶的動態消息
-- 有多個項目的過濾條件：linkedIn API 為例，指定過濾的參數名
+- 有多個項目的過濾條件：LinkedIn API 為例，指定過濾的參數名
 ```
 GET /people-search?first-name=Clair
 GET /people-search?last-name=Standish
@@ -488,7 +488,7 @@ Content-Type: application/x-www-form-urlencoded
 
 grant_type=client_credentials
 ```
-- (補充) 自身訊息的別名 (alias)：透過 API 訪問用戶自己的訊息，不再需要一個個指定用戶的 ID，使用 `self`, `me` 等 key words 表示用戶自己，透過 access token 獲取綁定的用戶資訊。
+- (補充) 自身訊息的別名 (alias)：透過 API 取得用戶自己的訊息，不再需要一個個指定用戶的 ID，使用 `self`, `me` 等 key words 表示用戶自己，透過 access token 獲取綁定的用戶資訊。
 
     | Service  | Key Words   |   Sample   |   
     | ----------- | ------------ | ------------ | 
