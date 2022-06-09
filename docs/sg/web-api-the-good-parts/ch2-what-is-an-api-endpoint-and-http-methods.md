@@ -229,11 +229,7 @@ GET /users?gender=male
 ```
 
 :::info Discussion
-<<<<<<< HEAD
 怎樣的場合適合使用 query parameters?
-=======
-怎樣的場合適合使用 query string?
->>>>>>> 4120255 (fix: Adjust document title structure; Fix broked table in SG Ch2)
 :::
 
 ### 2.5.1 取得資料量 & 資料取得位置的查詢參數
