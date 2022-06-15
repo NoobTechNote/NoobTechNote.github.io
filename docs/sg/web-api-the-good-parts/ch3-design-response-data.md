@@ -1,6 +1,6 @@
 ---
-title: "Ch3: Design response data"
-sidebar_label: "Ch3: Design response data"
+title: "Ch3: Design Response Data"
+sidebar_label: "Ch3: Design Response Data"
 sidebar_position: 3
 ---
 
@@ -196,15 +196,168 @@ Users 會以你想不到的方式來使用這些 API
 
   `http://api.exmample.com/v1/users/1234?fields=name,age`
 
+  **通過字段名來指定所需資料**
 
+  | Service | 查詢參數名 | 示例                        | 省略時的行為 |
+  | ------- | ---------- | --------------------------- | ------------ |
+  | bit.ly  | fields     | cities, lang, url, referrer | 返回所有資料 |
+  | Etsy    | fields     | -                           | -            |
+
+- 指定組合名稱。(Amazon Product Advertising API 稱為 Response Group)
 
 ### 3.3.2 封裝是否必要
 
+**統一的結構將所有資料包起來**
+
+```json
+{
+  "header": {
+    "status": "success",
+    "errorCode": 0
+  },
+  "response": {
+    ...實際數據
+  }
+}
+```
+
+- header 保存 API 狀態
+- response 保存有效數據(客戶端所需的數據)
+
+#### 優缺點
+
+- <font color="#009400">更容易進行抽象處理</font>
+- <font color="#e13238">可能會使資料變得冗長</font>
+
+  > 例如上述範例裡的 `header`，實際上 HTTP 已經完成封裝了
+
+:::tip
+使用 JSONP 時例外，封裝會更加便利，讀取 JSONP 數據時無法取得 HTTP 等資訊
+:::
+
 ### 3.3.3 數據是否應該扁平化
+
+#### 在對象中嵌套對象
+
+- 使用階層形式的資料
+
+  ```json
+  {
+    "id": 41234,
+    "message": "Hello World!",
+    "sender": {
+      "id": 51245,
+      "name": "Jay"
+    },
+    "receiver": {
+      "id": 62124,
+      "name": "Mech"
+    },
+    ......
+  }
+  ```
+
+- 使用扁平化形式的資料
+
+  ```json
+  {
+    "id": 41234,
+    "message": "Hello World!",
+    "sender_id": 51245,
+    "sender_name": "Jay",
+    "receiver_id": 62124,
+    "receiver_name": "Mech",
+    ......
+  }
+  ```
+
+#### 單純多項彙整
+
+- 使用階層形式的資料
+
+  ```json
+  {
+    "id": 52352,
+    "name": "Jay",
+    "profile": {
+      "birthday": 1111,
+      "gender": "male",
+      "languages": ["zh", "en"]
+    },
+    ...
+  }
+  ```
+
+- 使用扁平化形式的資料
+
+  ```json
+  {
+    "id": 52352,
+    "name": "Jay",
+    "birthday": 1111,
+    "gender": "male",
+    "languages": ["zh", "en"],
+    ...
+  }
+  ```
 
 ### 3.3.4 序列與格式
 
+#### 返回序列
+
+```json
+[
+  {
+    "id": 51235,
+    "name": "Jay",
+    "profileIcon": "<url>",
+    ...
+  },
+  {
+    "id": 42351,
+    "name": "Tom",
+    "profileIcon": "<url>",
+    ...
+  }
+]
+```
+
+#### 作為對象返回
+
+```json
+{
+  "friends": [
+    {
+      "id": 51235,
+      "name": "Jay",
+      "profileIcon": "<url>",
+      ...
+    },
+    {
+      "id": 42351,
+      "name": "Tom",
+      "profileIcon": "<url>",
+      ...
+    }
+  ]
+}
+```
+
+**優點**
+
+- 更容易理解序列數據表示的是什麼
+- 數據透過對象封裝實現了結構統一
+- 可以壁面安全方面的風險
+  - e.g. Facebook
+    ![api_response_format](/img/api_response_format.png)
+
 ### 3.3.5 如何返回序列的個數以及是否還有後續數據
+
+> 這小節個人覺得比較沒有特別重點
+
+:::info discussion
+大家對於 **_如何返回數據數量及後續是否還有數據_** 有什麼想法嗎？
+:::
 
 export const Highlight = ({ children, color }) => (
 <span
