@@ -347,7 +347,7 @@ Users 會以你想不到的方式來使用這些 API
 
 - 更容易理解序列數據表示的是什麼
 - 數據透過對象封裝實現了結構統一
-- 可以壁面安全方面的風險
+- 可以避免安全方面的風險
   - e.g. Facebook
     ![api_response_format](/img/api_response_format.png)
 
