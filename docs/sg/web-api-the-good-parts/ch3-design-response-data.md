@@ -194,7 +194,7 @@ Users 會以你想不到的方式來使用這些 API
 - 數據量越小越好?
 - API 調用時透過查詢參數來指定所需字段
 
-  `http://api.exmample.com/v1/users/1234?fields=name,age`
+  `http://api.example.com/v1/users/1234?fields=name,age`
 
   **通過字段名來指定所需資料**
 
@@ -358,6 +358,211 @@ Users 會以你想不到的方式來使用這些 API
 :::info discussion
 大家對於 **_如何返回數據數量及後續是否還有數據_** 有什麼想法嗎？
 :::
+
+## 3.4 各個數據的格式
+
+### 3.4.1 各個數據的名稱
+
+#### **Keys 命名要點**
+
+1. 使用多數 API 中用來表示相同含義的單字
+   - 不要賦予給一些常用單字不符合它所表達的含義 (e.g. `user_id` 存 user 登入時間)
+2. 盡可能簡短命名
+   - e.g. `user_registration_datetime` -> `registered_at` or `created_at`
+3. key 包含多個單字時，API 中連接單字的方式要統一
+   - e.g.
+     - 駝峰命名(camel case): `userId`
+     - 蛇形命名(snake case): `user_id`
+   - 其他
+     - [匈牙利命名法(Hungarian notation)](https://zh.wikipedia.org/zh-tw/%E5%8C%88%E7%89%99%E5%88%A9%E5%91%BD%E5%90%8D%E6%B3%95)
+4. 盡可能不用奇怪的縮寫
+   - e.g.
+     - `timeline` -> `tl`
+     - `timezone` -> `tz`
+     - `location` -> `lctn`
+5. 注意單複數命名
+   - e.g. 取得好友列表應該是 `friends` 而不是 `friend`
+
+:::info
+設計 API keys name 可以參考 [ProgrammableWeb](https://www.programmableweb.com/category/all/apis)
+:::
+
+### 3.4.2 如何表示性別數據
+
+**兩種主流方式**
+
+1. `male` or `female`
+2. `1` 表示男性，`2` 表示女性
+
+:::tip
+多數情況會以字串方式來描述性別。
+
+`sex`基於生物學意義上的性別，`gender`基於社會、文化意義上的性別。
+:::
+
+### 3.4.3 日期格式
+
+| format name                   | example                        |
+| ----------------------------- | ------------------------------ |
+| RFC 822(RFC 1123 中修正)      | Sun, 06 Nov 1994 08:49:37 GMT  |
+| RFC 850(RFC 1036 中修正)      | Sunday, 06-Nov-94 08:49:37 GMT |
+| ANSI C asctime() format       | Sun Nov 6 08:49:37 1994        |
+| RFC 3339                      | 2015-10-12T11:30:22+09:00      |
+| Unix timestamp (epoch second) | 1396821803                     |
+
+- epoch second: 紀錄 `1970年01月01日 00點00分00秒(UTC)` 到當前時間的秒數
+
+:::note RFC 3339
+UTC 可以用 `Z` 標記
+
+- `2015-11-02T13:00:12+00:00`
+- `2015-11-02T13:00:12+0000`
+- `2015-11-02T13:00:12Z`
+
+有些 API 會在 Header 填入 Unix timestamp (Ch4 會討論)
+
+> _**個人經驗...**_
+>
+> - 不要自幹處理時間，盡量使用多人用的時間處理套件 😆
+> - Backend 盡量使用 UTC 時間處理
+
+:::
+
+:::tip
+目前大多數都使用 **RFC 3339** 格式
+
+**-00:00** 表示時區不明
+:::
+
+### 3.4.4 大整數(bigint) 與 JSON
+
+- 64bit 整數當 32bit 處理會導致溢位
+- JavaScript 將所有數值都當作 IEEE 754 標準的 64bit 浮點數處理
+
+```javascript
+var bitInt = 462781738297483264
+console.log(bitInt)
+
+# > 462781738297483260
+```
+
+:::note
+Twitter API 同時將 ID & ID 的字串類型返回
+
+```json
+{
+  "id": 266031293949698048,
+  "id_str": "266031293949698048"
+}
+```
+
+:::
+
+## 3.5 Response 數據的設計
+
+- API 沒有必要如實反映 DB 的 table 結構
+  - 若好友列表的 table 裡可能只包含 User Id，也不代表好友列表只能返回 User Id
+- 定義特定的數據結構，在 Client-side 就可以採用相同的程式碼處理
+
+:::tip 本節重點
+**必須仔細思考 API 的使用情境，設計出用戶使用起來易懂、方便的資料結構**
+:::
+
+## 3.6 錯誤訊息的表示
+
+### 3.6.1 透過狀態碼來表示錯誤訊息
+
+- 選擇合適的 HTTP status code
+
+```
+HTTP/1.1 200 OK
+Server: GitHub.com
+Date: sun, 04 May 2014 22:25:56 GMT
+Content-Type: application/json; charset=utf-8
+......
+```
+
+| status code | meaning       |
+| ----------- | ------------- |
+| 1XX         | Informational |
+| 2XX         | Successful    |
+| 3XX         | Redirects     |
+| 4XX         | Client errors |
+| 5XX         | Server errors |
+
+:::tip
+找不到合適的 status code 時，使用`"200"` `"400"` `"500"`等...以`"00"`結尾的 status code
+:::
+
+### 3.6.2 向 Client-side 返回詳細的錯誤訊息
+
+1. 返回在 Response Headers(定義私有 Header)
+
+```
+X-MYNAME-ERROR-CODE: 2013
+X-MYNAME-ERROR-MESSAGE: Bad authentication token
+X-MYNAME-ERROR-INFO: http://docs.exa,ple.com/api/v1/authentication
+```
+
+2. 返回在 Response Data 中(JSON、XML 等)
+
+```json
+{
+  "error": {
+    "code": 2013,
+    "message": "Bad authentication token",
+    "info": "http://docs.exa,ple.com/api/v1/authentication"
+  }
+}
+```
+
+#### Twitter & GitHub Example
+
+- **Twitter**
+
+  ```json
+  {
+    "errors": [
+      {
+        "message": "Bad authentication data",
+        "code": 215
+      }
+    ]
+  }
+  ```
+
+- **GitHub**
+
+  ```json
+  {
+    "message": "Not Found",
+    "documentation_url": "https://developer.github.com/v3"
+  }
+  ```
+
+### 3.6.3 如何返回詳細的錯誤訊息
+
+- 返回錯誤訊息、錯誤碼、錯誤連結等，具體且有效訊息
+- 錯誤碼應和 API 文檔一起提供
+- 錯誤訊息中可包含提供給開發人員與非開發人員的訊息
+  ```json
+  {
+    "error": {
+      "developerMessage": "...for developer message...",
+      "userMessage": "...for user message...",
+      "code": 2013,
+      "info": "http://docs.example.com/api/v1/authentication"
+    }
+  }
+  ```
+
+### 3.6.4 發生錯誤時防止返回 HTML
+
+### 3.6.5 維護與狀態碼
+
+### 3.6.6 需返回意義不明確的訊息時
+
+### 3.6.7 小結
 
 export const Highlight = ({ children, color }) => (
 <span
