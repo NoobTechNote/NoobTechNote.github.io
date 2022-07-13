@@ -4,16 +4,91 @@ sidebar_label: "Ch4: 最大化的利用HTTP Protocol"
 sidebar_position: 4
 ---
 
-## 4.1 使用HTTP協議規範的意義
+## 4.1 使用 HTTP 協議規範的意義
+
+    - RFC (Request For Comments)
+
+![http_request_message_format](/img/http_request_message_format.png)
+![http_response_message_format](/img/http_response_message_format.png)
+
+Image From:[The TCP/IP Guide](http://www.tcpipguide.com/free/t_HTTPGenericMessageFormat.htm)
 
 ## 4.2 正確使用狀態碼
 
-## 4.3 Cache與HTTP
+### HTTP 狀態碼可區分為五大類：
 
-## 4.4 Content-Type的指定
+- 1xx 消息
+- 2xx 成功
+- 3xx 重新導向
+- 4xx 客戶端錯誤
+- 5xx 伺服器錯誤
 
-## 4.5 Origin Policy與CORS資源共享
+**主要的狀態碼**
 
-## 4.6 定義私有的HTTP Header
+| Status code | Nmae                   | Description                          |
+| ----------- | ---------------------- | ------------------------------------ |
+| 200         | OK                     | 請求成功                             |
+| 201         | Created                | 請求已被接受，新的資源已創建         |
+| 202         | Accepted               | 請求成功                             |
+| 204         | No Content             | 沒有內容                             |
+| 300         | Multiple Choices       | 返回多條重定向供選擇                 |
+| 301         | Moved Permanently      | 永久重定向                           |
+| 302         | Found                  | 臨时重定向                           |
+| 303         | See Other              | 當前請求的資源在其它地址             |
+| 304         | Not Modified           | 請求資源與本地緩存相同，未修改       |
+| 307         | Temporary Redirect     | 臨時重定向，同 302                   |
+| 400         | Bad Request            | 請求錯誤，通常是訪問的域名未綁定引起 |
+| 401         | Unauthorized           | 需要身份认证验证                     |
+| 403         | Forbidden              | 禁止訪問                             |
+| 404         | Not Found              | 請求的內容未找到或已刪除             |
+| 405         | Method Not Allowed     | 不允许的请求方法                     |
+| 406         | Not Acceptable         | 無法響應，因資源無法滿足客戶端條件   |
+| 408         | Request Timeout        | 請求超時                             |
+| 409         | Conflict               | 存在衝突                             |
+| 410         | Gone                   | 資源已經不存在(過去存在)             |
+| 413         | Payload Too Large      | 請求的 URI 過長                      |
+| 414         | Request-URI Too Long   | 請求資源與本地緩存相同，未修改       |
+| 415         | Unsupported Media Type | 無法處理的媒體格式                   |
+| 429         | Too Many Requests      | 並發請求過多                         |
+| 500         | Internal Server Error  | 服務器端程序錯誤                     |
+| 503         | Service Unavailable    | 服務器端臨時錯誤                     |
+
+```
+HTTP/1.1 200 OK
+Content-Type: application/json
+
+{
+    "head": {
+        "errorCode": 1001,
+        "errorMessage": "Invalid parameter"
+    },
+    "body": {
+        :
+    }
+}
+```
+
+## 4.3 Cache 與 HTTP
+
+- 減少服務器的連線數量，可以提升用戶訪問速度
+- 在網路連線斷開的狀態下也可以在某種程度提供服務
+- 客戶端將資料暫存
+
+:::info Discussion
+反向代理服務器 Reverse Proxy
+:::
+
+### 4.3.1 過期模型(Expiration Model)
+### 4.3.2 驗證模型(Validation Model)
+### 4.3.3 啟發式過期(Heuristic Expiration)
+### 4.3.4 不希望實施緩存的情況
+### 4.3.5 使用Vary來指定緩存單位
+
+
+## 4.4 Content-Type 的指定
+
+## 4.5 Origin Policy 與 CORS 資源共享
+
+## 4.6 定義私有的 HTTP Header
 
 ## 4.7 小結
