@@ -558,11 +558,38 @@ X-MYNAME-ERROR-INFO: http://docs.exa,ple.com/api/v1/authentication
 
 ### 3.6.4 發生錯誤時防止返回 HTML
 
+某些 API 發生錯誤時會 Response HTML (500, 503, 404 較常見)，為了讓 Clinet-side 有更好的用戶體驗，我們需要多加注意 API Response 格式
+
 ### 3.6.5 維護與狀態碼
+
+API 服務若要停止運行進行維護作業，需要提供用戶一些資訊
+
+- 503 status code
+- headers 帶入 `Retry-After` (**`Retry-After`可以是具體日期或可以正常訪問的秒數**)
+
+:::tip
+維護時間需要考慮一些預期以外的事情發生，進而準備充沛的時間處理
+:::
+
+:::info [Scott](https://zh.wikipedia.org/zh-tw/%E8%92%99%E5%93%A5%E9%A6%AC%E5%88%A9%C2%B7%E5%8F%B2%E8%80%83%E7%89%B9)
+**Space: the final frontier. These are the voyages of the starship Enterprise.**
+:::
 
 ### 3.6.6 需返回意義不明確的訊息時
 
-### 3.6.7 小結
+> 依業務場景及安全性考量，有時會並非壹定需要返回正確訊息
+
+### 3.7 小結
+
+:::tip Good ✅
+
+- 使用 JSON 或和目的一致的數據格式
+- 不要做多餘的封裝
+- Response data 盡可能使用扁平化結構
+- 數據名稱應簡潔易懂，並適當地使用單複數
+- 錯誤格式統一，使 Client-side 能方便的理解錯誤的詳細訊息
+
+:::
 
 export const Highlight = ({ children, color }) => (
 <span
