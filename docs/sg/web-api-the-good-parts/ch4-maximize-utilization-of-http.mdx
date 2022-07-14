@@ -79,14 +79,60 @@ Content-Type: application/json
 :::
 
 ### 4.3.1 過期模型(Expiration Model)
+
+- 緩存可用狀態 fresh(新鮮)
+- 緩存不可用狀態 stale(不新鮮)
+
+:::info Discussion
+你有用過 Expires, Cache-Control 的經驗嗎？
+:::
+
+> HTTP 時間格式, 只能用 GMT 時區
+
 ### 4.3.2 驗證模型(Validation Model)
+
+最後更新會填在 Last-Modified, ETag
+
+```
+Last-Modified: Tue, 01 Jul 2014 00:00:00 GMT
+ETag: "ff39b31e285573ee373af0d492aca581"
+```
+
+    - MD5, SHA1
+
+強校驗和弱校驗
+
+```
+"123456789" -- 一個強ETag驗證符
+W/"123456789" -- 一個弱ETag驗證符
+```
+
+:::info Discussion
+你有做過驗證模型的相關功能嗎？
+:::
+
 ### 4.3.3 啟發式過期(Heuristic Expiration)
+
+client 端根據 server 端的更新頻率,具體狀態等訊息，自行決定緩存時間。
+
 ### 4.3.4 不希望實施緩存的情況
-### 4.3.5 使用Vary來指定緩存單位
 
-## 4.4 Content-Type的指定
+```
+Cache-Control: no-cache
+```
 
-Content-Type是一個的HTTP Header，用來告訴對方自己所傳送的這包payload是什麼樣的類型
+### 4.3.5 使用 Vary 來指定緩存單位
+
+服務器驅動的內容協商(Server Driven Content Negotiation)
+
+```
+Accept-Language: ja
+Vary: Accept-Language
+```
+
+## 4.4 Content-Type 的指定
+
+Content-Type 是一個的 HTTP Header，用來告訴對方自己所傳送的這包 payload 是什麼樣的類型
 
 ```
 Content-Type: type/subtype [;options]
@@ -95,18 +141,18 @@ Content-Type: type/subtype [;options]
 Content-Type: text/html; charset=utf-8
 ```
 
-### 與Content-Type有關的情境
+### 與 Content-Type 有關的情境
 
-#### Request標明Server的處理方式
+#### Request 標明 Server 的處理方式
 
-* AWS API Gateway對於不同的request Content-Type有一套預設的[處理方式](https://docs.aws.amazon.com/apigateway/latest/developerguide/api-gateway-payload-encodings-workflow.html)
+- AWS API Gateway 對於不同的 request Content-Type 有一套預設的[處理方式](https://docs.aws.amazon.com/apigateway/latest/developerguide/api-gateway-payload-encodings-workflow.html)
 
-#### Response控制瀏覽器的行為
+#### Response 控制瀏覽器的行為
 
-* Github用`text/plain`傳送的JS Source code內容，讓瀏覽器直接檢視source code而不會被意外執行
-https://raw.githubusercontent.com/NoobTechNote/NoobTechNote.github.io/main/sidebars.js
+- Github 用`text/plain`傳送的 JS Source code 內容，讓瀏覽器直接檢視 source code 而不會被意外執行
+  https://raw.githubusercontent.com/NoobTechNote/NoobTechNote.github.io/main/sidebars.js
 
-如果在HTML內使用`<script>`Tag存取上面的js link，會得到錯誤
+如果在 HTML 內使用`<script>`Tag 存取上面的 js link，會得到錯誤
 
 ```
 Refused to execute script from 'https://raw.githubusercontent.com/NoobTechNote/NoobTechNote.github.io/main/sidebars.js'
@@ -114,80 +160,81 @@ because its MIME type ('application/json') is not executable, and strict MIME ty
 ```
 
 :::info Notice
-一個常見的錯誤其實是使用text/html傳送javascript內容
-所以你用的Backend Framework其實有在幫你處理Response的Content-Type
+一個常見的錯誤其實是使用 text/html 傳送 javascript 內容
+所以你用的 Backend Framework 其實有在幫你處理 Response 的 Content-Type
 
-例如PHP的 [Symfony Response](https://github.com/symfony/symfony/blob/6.2/src/Symfony/Component/HttpFoundation/Response.php#L259)
+例如 PHP 的 [Symfony Response](https://github.com/symfony/symfony/blob/6.2/src/Symfony/Component/HttpFoundation/Response.php#L259)
 :::
 
 :::caution
-瀏覽器其實不總是會聽Content-Type的意思，有時會依照內容猜測，該用什麼行為處理這個HTTP response
+瀏覽器其實不總是會聽 Content-Type 的意思，有時會依照內容猜測，該用什麼行為處理這個 HTTP response
 
-X-Content-Type-Options: nosniff 可以協助你阻止瀏覽器猜測response內容導致非預期的行為
+X-Content-Type-Options: nosniff 可以協助你阻止瀏覽器猜測 response 內容導致非預期的行為
 :::
 
-### Response的Content Type
+### Response 的 Content Type
 
-#### 常見的Content-Type
+#### 常見的 Content-Type
 
-| Content-Type           | 含義                                                                                                         |
-| ---------------------- | ------------------------------------------------------------------------------------------------------------ |
-| text/plain             | 純文字 [(註1)](#anchor1)                                                                                     |
-| text/html              | HTML文件 [(註1)](#anchor1)                                                                                   |
-| application/xml        | XML文件                                                                                                      |
-| application/rss+xml    | RSS XML文件                                                                                                  |
-| application/json       | JSON文件                                                                                                     |
-| text/css               | CSS文件                                                                                                      |
-| application/javascript | Javascript程式，舊稱text/javascript，但在[RFC4329](https://datatracker.ietf.org/doc/html/rfc4329#page-9)廢除 |
-| multipart/form-data    | 表單資料，常用在Form POST Request                                                                            |
-|                        |                                                                                                              |
+| Content-Type           | 含義                                                                                                           |
+| ---------------------- | -------------------------------------------------------------------------------------------------------------- |
+| text/plain             | 純文字 [(註 1)](#anchor1)                                                                                      |
+| text/html              | HTML 文件 [(註 1)](#anchor1)                                                                                   |
+| application/xml        | XML 文件                                                                                                       |
+| application/rss+xml    | RSS XML 文件                                                                                                   |
+| application/json       | JSON 文件                                                                                                      |
+| text/css               | CSS 文件                                                                                                       |
+| application/javascript | Javascript 程式，舊稱 text/javascript，但在[RFC4329](https://datatracker.ietf.org/doc/html/rfc4329#page-9)廢除 |
+| multipart/form-data    | 表單資料，常用在 Form POST Request                                                                             |
+|                        |                                                                                                                |
 
-<p id="anchor1">
-    <strong>註1</strong>：
-    語意上其實該屬於<code>application/</code>，但因為歷史因素維持<code>text/</code>分類
+<p id='anchor1'>
+  <strong>註1</strong>： 語意上其實該屬於<code>application/</code>
+  ，但因為歷史因素維持<code>text/</code>分類
 </p>
 
-#### X- 開頭的Content Type
+#### X- 開頭的 Content Type
 
-`x-`開頭的Content Type代表沒有在IANA註冊，通常具備特殊用途，或是自定義的Content Type會使用`x-`開頭去定義，例如
+`x-`開頭的 Content Type 代表沒有在 IANA 註冊，通常具備特殊用途，或是自定義的 Content Type 會使用`x-`開頭去定義，例如
 
-| Content Type          |                                             |
-| --------------------- | ------------------------------------------- |
-| application/x-msgpack | MessagePack                                 |
-| application/x-yaml    | YAML文件                                    |
-| application/x-plist   | Mac的property list，常見於下載iOS App的引導 |
+| Content Type          |                                                 |
+| --------------------- | ----------------------------------------------- |
+| application/x-msgpack | MessagePack                                     |
+| application/x-yaml    | YAML 文件                                       |
+| application/x-plist   | Mac 的 property list，常見於下載 iOS App 的引導 |
 
-但，因為歷史因素，有些`x-`開頭的Content Type是有在IANA註冊的
+但，因為歷史因素，有些`x-`開頭的 Content Type 是有在 IANA 註冊的
 
-| Content Type             |                             |
-| ------------------------ | --------------------------- |
-| application/x-javascript | Javascript程式              |
-| application/x-json       | JSON文件                    |
-| image/x-png              | PNG圖片                     |
-| x-www-form-urlencoded    | HTML Form [(註2)](#anchor2) |
+| Content Type             |                              |
+| ------------------------ | ---------------------------- |
+| application/x-javascript | Javascript 程式              |
+| application/x-json       | JSON 文件                    |
+| image/x-png              | PNG 圖片                     |
+| x-www-form-urlencoded    | HTML Form [(註 2)](#anchor2) |
 
-<p id="anchor2">
-    <strong>註2</strong>：用`x-www-form-urlencoded`傳送的資料，即使你用POST傳送，但實際上會被做URL Encode放在URL上。因為URL無法加密，如果帶有敏感訊息很容易會被各種log或中間人攔截
+<p id='anchor2'>
+  <strong>註2</strong>
+  ：用`x-www-form-urlencoded`傳送的資料，即使你用POST傳送，但實際上會被做URL Encode放在URL上。因為URL無法加密，如果帶有敏感訊息很容易會被各種log或中間人攔截
 </p>
 
-#### 自定義的Content Type
+#### 自定義的 Content Type
 
-[RFC6838](https://datatracker.ietf.org/doc/html/rfc6838#section-3)有規定一組，如果你需要自己定義Content Type時的參考
+[RFC6838](https://datatracker.ietf.org/doc/html/rfc6838#section-3)有規定一組，如果你需要自己定義 Content Type 時的參考
 
-* Standard Tree: 無前綴，標準中有定義的content-type，屬於被保留的一群
-* Vendor Tree: `vnd`，有被IANA認證過的公司使用。通常會被大範圍使用，但由特定公司管理
-    * application/vnd.ms-excel
-    * application/vnd.github.v3+json
-* Personal Tree: `prs.`，個人使用，或實驗性用途，只在非公開的狀況下被使用
-    * appliccation/prs.mech.v1+json
-* Unregistered Tree: `x.`，僅私有使用，不能被註冊
+- Standard Tree: 無前綴，標準中有定義的 content-type，屬於被保留的一群
+- Vendor Tree: `vnd`，有被 IANA 認證過的公司使用。通常會被大範圍使用，但由特定公司管理
+  - application/vnd.ms-excel
+  - application/vnd.github.v3+json
+- Personal Tree: `prs.`，個人使用，或實驗性用途，只在非公開的狀況下被使用
+  - appliccation/prs.mech.v1+json
+- Unregistered Tree: `x.`，僅私有使用，不能被註冊
 
 :::caution
 注意`x.`跟`x-`是不同的，後者是有可能被註冊成標準的一部份
 :::
 
 :::info Discussion
-你有用過非標準的Content Type嗎？好用嗎？Github為什麼這麼回應？
+你有用過非標準的 Content Type 嗎？好用嗎？Github 為什麼這麼回應？
 
 ```
 HTTP/1.1 200 OK
@@ -195,25 +242,26 @@ Server: Github.com
 Content-Type: application/json; charset=utf-8
 X-GitHub-Media-Type: github.v3
 ```
+
 :::
 
-### Request的Content Type
+### Request 的 Content Type
 
-Accept: 我能夠吃怎樣的Response格式
-Content-Type: 宣告目前傳送的payload是怎樣的格式
+Accept: 我能夠吃怎樣的 Response 格式
+Content-Type: 宣告目前傳送的 payload 是怎樣的格式
 
 #### Accept Header
 
-* `q`可以指定優先級，數字越大優先權越高，預設是最高`1`
-* 所有回應格式都吃的話，使用`*/*`
+- `q`可以指定優先級，數字越大優先權越高，預設是最高`1`
+- 所有回應格式都吃的話，使用`*/*`
 
-翻譯：_我吃html, xhtml，但如果都沒有的話，也可以給我xml，再沒有可以給我webp，真的沒辦法就隨便吧_
+翻譯：_我吃 html, xhtml，但如果都沒有的話，也可以給我 xml，再沒有可以給我 webp，真的沒辦法就隨便吧_
+
 ```
 Accept: text/html,application/xhtml+xml,application/xml;q=0.9;image/webp,*/*;q=0.8
 ```
 
-
-翻譯：_我吃json，但沒辦法的話xml也可以_
+翻譯：_我吃 json，但沒辦法的話 xml 也可以_
 
 ```
 Accept: application/json,application/xml;q=0.9
@@ -221,13 +269,12 @@ Accept: application/json,application/xml;q=0.9
 
 #### Vary: Accept
 
-在有API Gateway, Reversed Proxy存在請求端與伺服端的中間時，Accept Header有可能會被改變。
+在有 API Gateway, Reversed Proxy 存在請求端與伺服端的中間時，Accept Header 有可能會被改變。
 
-此時需要加上`Vary: Accept` Header要求Gateway轉交Accept Header或做進一步處理
+此時需要加上`Vary: Accept` Header 要求 Gateway 轉交 Accept Header 或做進一步處理
 
+## 4.5 Origin Policy 與 CORS 資源共享
 
-## 4.5 Origin Policy與CORS資源共享
-
-## 4.6 定義私有的HTTP Header
+## 4.6 定義私有的 HTTP Header
 
 ## 4.7 小結
