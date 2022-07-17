@@ -145,7 +145,7 @@ Content-Type: text/html; charset=utf-8
 
 #### Request 標明 Server 的處理方式
 
-- AWS API Gateway 對於不同的 request Content-Type 有一套預設的[處理方式](https://docs.aws.amazon.com/apigateway/latest/developerguide/api-gateway-payload-encodings-workflow.html)
+- 例如，AWS API Gateway 對於不同的 request Content-Type 有一套預設的[處理方式](https://docs.aws.amazon.com/apigateway/latest/developerguide/api-gateway-payload-encodings-workflow.html)
 
 #### Response 控制瀏覽器的行為
 
@@ -160,8 +160,7 @@ because its MIME type ('application/json') is not executable, and strict MIME ty
 ```
 
 :::info Notice
-一個常見的錯誤其實是使用 text/html 傳送 javascript 內容
-所以你用的 Backend Framework 其實有在幫你處理 Response 的 Content-Type
+一個常見的錯誤其實是使用Content-Type: text/html傳送Javascript內容給前端。如果你都遇過這類問題，是因為你用的Backend Framework有在幫你處理Response的Content-Type
 
 例如 PHP 的 [Symfony Response](https://github.com/symfony/symfony/blob/6.2/src/Symfony/Component/HttpFoundation/Response.php#L259)
 :::
@@ -234,7 +233,7 @@ X-Content-Type-Options: nosniff 可以協助你阻止瀏覽器猜測 response �
 :::
 
 :::info Discussion
-你有用過非標準的 Content Type 嗎？好用嗎？Github 為什麼這麼回應？
+你有用過非標準的Content Type嗎？好用嗎？在以下例子中，Github的API為什麼這麼回應？
 
 ```
 HTTP/1.1 200 OK
@@ -247,8 +246,8 @@ X-GitHub-Media-Type: github.v3
 
 ### Request 的 Content Type
 
-Accept: 我能夠吃怎樣的 Response 格式
-Content-Type: 宣告目前傳送的 payload 是怎樣的格式
+Accept: 我能夠吃怎樣的Response格式
+Content-Type: 宣告目前傳送的payload是怎樣的格式
 
 #### Accept Header
 
@@ -273,8 +272,156 @@ Accept: application/json,application/xml;q=0.9
 
 此時需要加上`Vary: Accept` Header 要求 Gateway 轉交 Accept Header 或做進一步處理
 
-## 4.5 Origin Policy 與 CORS 資源共享
+## 4.5 Same Origin Policy 與 CORS
+
+主要是安全考量，瀏覽器只允許從相同的來源(Origin)讀取資料
+
+| URL                                             | Outcome	Reason                                         |
+| ----------------------------------------------- | ------------------------------------------------------ |
+| http://store.company.com/dir2/other.html        | Same origin	Only the path differs                      |
+| http://store.company.com/dir/inner/another.html | Same origin	Only the path differs                      |
+| https://store.company.com/page.html             | Failure Different protocol                             |
+| http://store.company.com:81/dir/page.html       | Failure	Different port (http:// is port 80 by default) |
+| http://news.company.com/dir/page.html           | Failure	Different host                                 |
+
+(表格來自[MDN](https://developer.mozilla.org/en-US/docs/Web/Security/Same-origin_policy))
+
+
+### CORS跨域請求
+
+如果要突破Origin的限制，會需要一些額外的作法。一般來說沒辦法前端自己做，需要server配合
+
+:::info
+簡單來說，要達成CORS你需要設定讓**被存取的數據**允許前端過來存取。也就是說，如果你不是數據或API的提供方或沒有權限更動其行為，你沒辦法辦到CORS
+:::
+
+* Server response的[Access-Control-Allow-Origin](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Access-Control-Allow-Origin)系列Headers
+  * Access-Control-Allow-Credentials
+  * Access-Control-Allow-Headers
+  * Access-Control-Allow-Methods
+  * Access-Control-Allow-Origin
+  * Access-Control-Expose-Headers
+  * Access-Control-Max-Age
+  * Access-Control-Request-Headers
+  * Access-Control-Request-Method
+
+另外，[JSONP](https://zh.m.wikipedia.org/zh-tw/JSONP)也是一種方式，但依然需要Server配合
+
+### CORS的Pre-flight Request
+
+在送出真的CORS資料請求之前，Browser會預先發起一個`OPTION`請求，探索對方是否允許CORS
+
+瀏覽器會發起Pre-flight Request的條件
+
+* Request Method不是HEAD/GET/POST
+* Request Header沒有帶有這些headers
+  * Accept
+  * Accept-Language
+  * Content-Language
+  * Content-Type
+* Content-Type header不是這些類型
+  * application/x-www-form-urlencoded
+  * multipart/form-data
+  * text/plain
+
+
+Pre-flight的請求與回應會長得像這樣，下列範例來自[MDN](https://developer.mozilla.org/en-US/docs/Glossary/Preflight_request)
+
+
+```bash
+OPTIONS /resource/foo
+Access-Control-Request-Method: DELETE # 我可以打DELETE嗎？
+Access-Control-Request-Headers: origin, x-requested-with
+Origin: https://foo.bar.org # 透過這個Origin來打
+```
+
+```bash
+HTTP/1.1 204 No Content
+Connection: keep-alive
+Access-Control-Allow-Origin: https://foo.bar.org # 透過這個Origin
+Access-Control-Allow-Methods: POST, GET, OPTIONS, DELETE # 你可以打POST, GET, OPTIONS, DELETE喔
+Access-Control-Max-Age: 86400
+```
+
+### 案例：PCHome24購物改版
+
+最近正紅的PCHome24首頁改版，有個console error
+
+![](./ch4/pchome_cors_mime_error.png)
+
+:::info Discussion
+問題是出在哪裡呢？
+:::
+
+Request
+```
+Request URL: https://tracker-api.netforce.com.tw/cdp-rawdata-pchome24h
+Request Method: POST
+Status Code: 200
+Remote Address: [2606:4700:3037::6815:a4f]:443
+Referrer Policy: strict-origin-when-cross-origin
+```
+
+Response
+```
+alt-svc: h3=":443"; ma=86400, h3-29=":443"; ma=86400
+cf-cache-status: DYNAMIC
+cf-ray: 72c472df0a92969a-SJC
+content-type: application/vnd.kafka.v2+json
+date: Sun, 17 Jul 2022 16:45:34 GMT
+expect-ct: max-age=604800, report-uri="https://report-uri.cloudflare.com/cdn-cgi/beacon/expect-ct"
+nel: {"success_fraction":0,"report_to":"cf-nel","max_age":604800}
+report-to: {"endpoints":[{"url":"https:\/\/a.nel.cloudflare.com\/report\/v3?s=EZifM3cYBLYijrHeUK7pUWwnKJEUJIjNIzo5mU7asCrGl7PPkWbQarf5AvRCrX0JIsneDPEKhEz%2BGi5%2Bjto1zvadqJ8rXZIDMEUYiYC9ScTAGj%2FrBX5AZ5g2Ucaw2hvaC3E8ntIamQn4k%2B2mZyIS07cq%2FriFuoqqPK8%3D"}],"group":"cf-nel","max_age":604800}
+server: cloudflare
+vary: Accept-Encoding, User-Agent
+via: 1.1 22d43bf299ac98b08849f5a01a8af246.cloudfront.net (CloudFront)
+x-amz-apigw-id: Va5rOHz7tjMFYgQ=
+x-amz-cf-id: 9gowKMyAERvJZore7__TUIe8vr1I5FUWH_BxiPvV59xbbRvzDDhRmg==
+x-amz-cf-pop: SFO5-P2
+x-amzn-remapped-date: Sun, 17 Jul 2022 16:45:34 GMT
+x-amzn-requestid: 2dc54a16-6928-4a7a-b195-dda519176780
+x-cache: Miss from cloudfront
+```
+
+### 參考資料
+
+關於Same Origin Policy很不錯的參考資料
+
+* [Hannah - 簡單弄懂同源政策 (Same Origin Policy) 與跨網域 (CORS)](https://medium.com/starbugs/%E5%BC%84%E6%87%82%E5%90%8C%E6%BA%90%E6%94%BF%E7%AD%96-same-origin-policy-%E8%88%87%E8%B7%A8%E7%B6%B2%E5%9F%9F-cors-e2e5c1a53a19)
+* [Jayden - 網站安全🔒 Same Origin Policy 同源政策 ! 一切安全的基礎](https://medium.com/%E7%A8%8B%E5%BC%8F%E7%8C%BF%E5%90%83%E9%A6%99%E8%95%89/same-origin-policy-%E5%90%8C%E6%BA%90%E6%94%BF%E7%AD%96-%E4%B8%80%E5%88%87%E5%AE%89%E5%85%A8%E7%9A%84%E5%9F%BA%E7%A4%8E-36432565a226)
+
 
 ## 4.6 定義私有的 HTTP Header
 
-## 4.7 小結
+要定義私有用途的HTTP Header請使用`X-`開頭，不能說是一種硬性規定，但是比較容易被識別
+
+* X-Github-Request-Id
+
+也有不少慣例，或是IANA規定的Header是`X-`開頭，需要定義私有Header時還是要避開。例如：
+
+* X-Forwarded-For
+* X-Forwarded-Host
+* X-Forwarded-Proto
+* X-Frame-Options
+* X-XSS-Protection
+* X-Content-Type-Options
+* X-DNS-Prefetch-Control
+
+### HTTP Header的豆知識
+
+#### 1. 放在header的資訊，為了相容性，總和不要超過8KB
+  * Apache 2.4 [Http Header Limit](https://httpd.apache.org/docs/2.4/mod/core.html#limitrequestfieldsize)是8KB
+    * 違背的話會return HTTP 413 Entity Too Large
+
+  * Set-Cookie也是一種header，所以也不要在Cookie內設定太多東西
+    * 真的有需要更大的空間，在JS Runtime用LocalStorage, WebSQL, IndexedDB
+
+#### 2. Header Name是case-insensitive的
+
+#### 3. Header的順序不重要(嗎？)
+  * 參考[RFC2616 4.2 Message Headers](https://www.rfc-editor.org/rfc/rfc2616#section-4.2)
+  * 但如果你有多個同名的Header，會有覆蓋問題
+  * 因為效率問題，有CDN會在你改變重要Header的順序時有不同的結果
+    * [Why ordering HTTP headers is important](https://sansec.io/research/http-header-order-is-important)
+    * 這篇文章有在2017上[Hacker News](https://news.ycombinator.com/item?id=14245577)
+
