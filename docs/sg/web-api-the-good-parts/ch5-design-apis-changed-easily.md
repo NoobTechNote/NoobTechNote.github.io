@@ -4,8 +4,8 @@ sidebar_label: "Ch5: 開發方便更改設計的 Web API"
 sidebar_position: 5
 ---
 
-:::tip
-真正的挑戰是 API 發布後的後續維護工作 
+:::info
+真正的挑戰是 API 發布後的後續維護工作 !
 :::
 
 ## 5.1 方便更改設計的重要性
@@ -130,6 +130,28 @@ Vary: Accept
 於使用條款裡載明會支援舊版 API 多長的時間。
 
 ## 5.5 編排層
+從傳統的 **One-size-fits-all APIs (OSFA APIs)** 演進到 **API 編排層(API Orchestration Layer)**。
+
+OSFA APIs: 以資源為導向、通用性為考量
+
+API Orchestration Layer:
+屬於整合性 API，將 API 自身的用途和元素突顯出來，提供給特定的工程師或應用程式使用。
+
+:::info
+設計整合性 API 要先了解的原則：
+1. 勢必因更良好的運作方式，捨棄部分原有的設計
+2. 為更有效運用網站資源，整合性 API 可能增加潛在的複雜度
+3. 了解目標受眾
+:::
+
+常見的整合性 API 類型：
+- 以裝置整合為主的 API
+- 以滿足請求為主的 API
+- 以使用經驗為主的 API
+
+文章來源:
+- [The future of API design: The orchestration layer](https://thenextweb.com/news/future-api-design-orchestration-layer)
+- [Embracing the Differences : Inside the Netflix API Redesign](https://netflixtechblog.com/embracing-the-differences-inside-the-netflix-api-redesign-15fd8b3dc49d)
 
 ## 5.6 小結
 :::tip GOOD
