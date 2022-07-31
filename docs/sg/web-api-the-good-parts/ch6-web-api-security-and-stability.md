@@ -81,10 +81,11 @@ HTTPS會比HTTP耗費更多處理時間，降低訪問速度。
   * X-Requested-With若透過CORS機制訪問，需進行預請求(preflight request)
 
 （圖6-2 p.171
-````
+:::warning
 如果上面的api header剛好又回傳Content-Type: text/html
+
 就會直接在背景執行
-````
+:::
 * 對JSON進行轉譯。(JSON跳脫字符Escape Character: ”、\)
 ![](https://www.json.org/img/string.png)
   * script加斜線使script標籤失效
