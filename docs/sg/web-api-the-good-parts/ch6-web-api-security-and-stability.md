@@ -49,7 +49,7 @@ HTTPS會影響SEO：
 [中間人攻擊](https://zh.wikipedia.org/zh-tw/%E4%B8%AD%E9%96%93%E4%BA%BA%E6%94%BB%E6%93%8A)：例如，在一個未加密的Wi-Fi 無線存取點的接受範圍內的中間人攻擊者，可以將自己作為一個中間人插入這個網路
 
 客戶端需檢查：
-- 簽證發行方是否可信 IETF(Certification and Public Key Pinning機制，檢查公鑰)
+- 簽證發行方是否可信
 - 驗證證書有效日期
 - 檢查伺服器端證書提示的通用名稱(Common Name)與實際連線網址是否相符
   - 2014年前Android的Apache HttpComponents HttpClient、HttpAsyncClient未檢驗。
@@ -60,6 +60,8 @@ HTTPS會比HTTP耗費更多處理時間，降低訪問速度。
 :::info 認證機構遭到攻擊導致發行偽証書案例
 
 此案例會導致客戶端看到的證書看起來是正確無誤。
+
+IETF(Certification and Public Key Pinning機制，檢查公鑰)
 
 [HTTP公鑰固定 (HTTP Public Key Pinning)](https://yu-jack.github.io/2020/03/02/ssl-pinning/)
 只允許特定正確的公鑰連線，其他的拒絕連線。（銀行App定期升版更換公鑰）
