@@ -317,7 +317,7 @@ DDoS阻斷服務攻擊：透過程式機械式不斷訪問，讓伺服器忙於�
 
 Twitter設置15分鐘為一個時間單位（Window），超過後等15分鐘即可訪問。
 
-Etsy服務使用Progressive rate limit(累進限速)方式。
+Etsy(電商平台)服務使用Progressive rate limit(累進限速)方式。
 
 24小時1萬次，每2小時1個單位，透過單位來管理訪問次數。超過次數後等下2個小時就會重置。
 
