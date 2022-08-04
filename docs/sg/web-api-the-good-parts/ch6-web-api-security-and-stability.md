@@ -4,20 +4,20 @@ sidebar_label: "Ch6: 開發牢固的Web API"
 sidebar_position: 6
 ---
 
-本章探討「安全性」與「穩定性」，思考如何開發牢固的Web API
+本章探討「**安全性**」與「**穩定性**」，思考如何開發牢固的Web API
 
 ## 6.1 讓Web API更安全
-防止第三方將使用者個資洩漏、竄改，以提升用戶對系統的信任度。
+目的：防止第三方將使用者個資洩漏、竄改，以**提升用戶對系統的信任度**。
 
 任何透過網路連線的電腦都有遭受攻擊的可能性。
 
 若沒有仔細理解安全問題的潛在風險，並尋求相對應策略，當發生非法訪問、機密資訊洩漏，只能倉促應對，造成信用及用戶評價下滑。
 
-資訊安全不斷更新，務必追蹤安全相關資訊，努力更新知識從容應對。
+**資訊安全不斷更新**，務必追蹤安全相關資訊，努力更新知識從容應對。
 
 本章將指明API至少應該採取哪些安全策略。
 
-:::danger 存在哪些安全問題
+:::danger API存在哪些安全問題
 - 非法獲取伺服器端和客戶端之間資訊
 - 利用伺服器端的安全漏洞非法獲取和篡改訊息
 - 預設通過瀏覽器訪問的API中的問題
@@ -25,24 +25,26 @@ sidebar_position: 6
 ## 6.2 非法獲取伺服器端和客戶端之間的信息
 HTTP本身沒有加密，所以任何人都可以截取雙方資訊。
 
-封包竊聽(Packet Sniffing)：在公開未設密碼的wifi，用軟體獲取他人封包資訊
+**封包竊聽(Packet Sniffing)**：在公開未設密碼的wifi，用軟體獲取他人封包資訊
 
-連線劫持(Session Hijacking)：從中竊聽session id (Firesheep)
+**連線劫持(Session Hijacking)**：從中竊聽session。(FireSheep)
 
 ### 6.2.1 用HTTPS時對HTTP通信實施加密
 HTTPS能對URI路徑、查詢字串、Header&Body等交互數據加密。
 
 通過TLS完成加密 （最新的是TLS1.3）
 
-HTTPS會影響SEO
-[Google 搜尋 - 將 HTTPS 納入排名信號 (2014/08/07)](https://developers.google.com/search/blog/2014/08/https-as-ranking-signal)
-
 HTTP嚴格傳輸安全(HTTP Strict Transport Security)：啟用後要求使用者一定要使用HTTPS來進行連線
 
-### 6.2.2 使用HTTPS是否意味著100%安全
+:::info
+HTTPS會影響SEO：
+[Google 搜尋 - 將 HTTPS 納入排名信號 (2014/08/07)](https://developers.google.com/search/blog/2014/08/https-as-ranking-signal)
+:::
+
+### 6.2.2 使用HTTPS是否意味著100%安全？
 2014年4月Heartbleed安全漏洞事件，加密HTTPS的開源OpenSSL有安全漏洞，直到兩年後才發現。
 
-除了伺服器端須確保安全，客戶端也需要驗證簽發證書的真偽，否則會遭到**中間人攻擊**。
+除了伺服器端須確保安全，**客戶端也需要驗證簽發證書的真偽**，否則會遭到**中間人攻擊**。
 
 [中間人攻擊](https://zh.wikipedia.org/zh-tw/%E4%B8%AD%E9%96%93%E4%BA%BA%E6%94%BB%E6%93%8A)：例如，在一個未加密的Wi-Fi 無線存取點的接受範圍內的中間人攻擊者，可以將自己作為一個中間人插入這個網路
 
@@ -54,21 +56,26 @@ HTTP嚴格傳輸安全(HTTP Strict Transport Security)：啟用後要求使用�
 
 HTTPS會比HTTP耗費更多處理時間，降低訪問速度。
 
-認證機構遭到攻擊導致發行偽証書案例
+
+:::info 認證機構遭到攻擊導致發行偽証書案例
 
 此案例會導致客戶端看到的證書看起來是正確無誤。
 
 [HTTP公鑰固定 (HTTP Public Key Pinning)](https://yu-jack.github.io/2020/03/02/ssl-pinning/)
 只允許特定正確的公鑰連線，其他的拒絕連線。（銀行App定期升版更換公鑰）
+:::
 
 ## 6.3 使用瀏覽器訪問API時的問題
 ### 6.3.1 XSS(Cross Site Scripting)
 目的：攻擊者植入惡意程式，來竄改頁面內容，讓使用者誤觸執行。
 
 攻擊方法：接收用戶的輸入內容並嵌入頁面的HTML。不僅HTML，API返回數據時也可能遭嵌入。
+
 （圖6-1 p.170
 
-[React: dangerouslySetInnerHTML](https://zh-hant.reactjs.org/docs/dom-elements.html#dangerouslysetinnerhtml)
+前端框架doc都有提示小心防範XSS：
+* [React: dangerouslySetInnerHTML](https://zh-hant.reactjs.org/docs/dom-elements.html#dangerouslysetinnerhtml)
+* [vue v-html](https://v3.cn.vuejs.org/api/directives.html#v-html)
 
 防範XSS 舉例
 * 用戶輸入的內容，都應仔細檢查（去除一些可疑數據）。
@@ -76,11 +83,14 @@ HTTPS會比HTTP耗費更多處理時間，降低訪問速度。
 {"data": "<script>alert('xss')</script>"}
 ```
 * API Content-Type要設對(避免Script被直接執行)
-  * IE有content Sniffing會自動判斷Content-Type，IE8需另加X-Content-Type-Options:nosniff
-  * jQuery等JavaScript框架透過XMLHttpRequest須額外發送X-Requested-With: XMLHTTPRequest（用來判斷是不是ajax請求）
-  * X-Requested-With若透過CORS機制訪問，需進行預請求(preflight request)
+  * IE有content Sniffing會自動判斷Content-Type
+    * IE8以後：需另加X-Content-Type-Options:nosniff
+    * IE7以前：檢查附加的request header & JSON字串轉譯
+  * jQuery等JavaScript框架透過XMLHttpRequest須額外發送**X-Requested-With: XMLHTTPRequest**（用來判斷是不是ajax請求）
+  * X-Requested-With若透過跨來源資源共用（Cross-Origin Resource Sharing (CORS)機制訪問，需進行預請求(preflight request)
 
 （圖6-2 p.171
+
 :::warning
 如果上面的api header剛好又回傳Content-Type: text/html
 
@@ -101,8 +111,7 @@ HTTPS會比HTTP耗費更多處理時間，降低訪問速度。
   {"data": "+ADw-script+AD4-alert('xss')+ADw-/script+AD4-"}
   ```
 
-:::info
-video 19:30
+:::info video 19:30
 :::
 
 ### 6.3.2 XSRF (CSRF)
@@ -111,7 +120,8 @@ video 19:30
 
 目的：向另一個不同的站點發送請求，執行非用戶意願的操作。
 
-攻擊方法：當用戶訪問惡意頁面時，XSRF攻擊會 透過頁面裡嵌入的連結、IFrame元素、Img元件、JavaScript代碼及表單等攻擊其他網站。
+攻擊方法：當用戶訪問惡意頁面時，XSRF攻擊會透過頁面裡嵌入的連結、IFrame元素、Img元件、JavaScript代碼及表單等攻擊其他網站。
+
 (圖6-4 p.174
 
 * 禁止透過GET方式修改數據，只能使用使用POST、PUT、DELETE方法。
@@ -130,8 +140,7 @@ video 19:30
 會生成一個隱藏欄位放入csrf token
 :::
 
-:::info
-video 1:00:00
+:::info video 1:00:00
 :::
 
 ### 6.3.3 JSON 劫持
@@ -157,10 +166,11 @@ https://api.example.com/v1/users/me
   * 若只允許ajax或非瀏覽器訪問：Header添加X-Requested-With
 * 讓瀏覽器準確識別JSON數據
   * Content-Type: application/json
-  * IE8需另加X-Content-Type-Options:nosniff
+  * IE8以後：需另加X-Content-Type-Options:nosniff
+  * IE7以前：檢查附加的request header & JSON字串轉譯
 * 讓JSON數據不能使用JavaScript解釋，或在執行時無法讀取數據。
   * 讓該段JSON無法通過語法解析出錯，或讓其執行時陷入無窮迴圈無法讀取數據。
-  * JSON的root使用{} object而不是[] array。
+  * JSON的root**使用{} object而不是[] array**。
     * array可以被正常執行，object則會被視為是JavaScript語法而執行出錯。
   * 在JSON文件前面設置一個無窮迴圈，讓瀏覽器無法處理。
 
@@ -170,11 +180,9 @@ https://api.example.com/v1/users/me
     {"t": "heartbeat"}
     {"t": "continue", "seq":10039}
   ```
-先把for(;;); 以字串方式處理掉。
-
-一個request包含多個數據減少HTTP請求數。
-
-不建議用在允許第三方訪問的API。
+* 先把for(;;); 以字串方式處理掉。
+* 一個request包含多個數據減少HTTP請求數。
+* 不建議用在允許第三方訪問的API。
 
 :::info 當API不需透過瀏覽器訪問
 
@@ -189,7 +197,9 @@ https://api.example.com/v1/users/me
 通過用戶認證，且被辨識為合法使用者，任意修改伺服器數據。
 
 用戶自身懷有惡意，難以避免。
+
 (圖6-6 p181
+
 即使不將API設計對外公開，使用者也可透過Console的Network查看處理過程。
 
 我們必須做到即使他人竊取整個數據交互過程，也無法實施非法行為。
@@ -197,18 +207,18 @@ https://api.example.com/v1/users/me
 ### 6.4.1 竄改參數
 攻擊者通過隨意更改客戶端發送至服務端的參數，來獲取原本無法得到的訊息，或將數據改為非法值。
 
-:::note 你覺得從這個網址中可以獲得哪些資訊？
+:::note 你覺得這個網址打出請求後，可以獲得哪些資訊？
 ```
 https://api.example.com/v1/users/12345?fields=name,email
 ```
 :::
 
 * 應嚴格檢查無法訪問的訊息
-* 防止透過修改ID來批次獲取資料（限速等機制限制訪問）。
-* 檢查參數合理性，伺服器不能完全信賴客戶端資料，並且需檢查資料一致性。
+* 防止透過修改ID來批次獲取資料（**限速**等機制限制訪問）。
+* **檢查參數合理性**，伺服器不能完全信賴客戶端資料，並且需檢查資料一致性。
   * api: item/decrease 3 (API減去3個item)
   * api: item/decrease -100 (API增加100個item?)
-  * 如果遊戲勝負交給客戶端判斷，傳送"我方勝利"？
+  * 如果遊戲勝負交給客戶端判斷，使用者惡意不斷傳送"我方勝利"？
 
 ### 6.4.2 請求再次發送
 通過再次發送之前的請求，讓伺服器再次進行相同的處理。
@@ -230,16 +240,16 @@ https://api.example.com/v1/users/12345?fields=name,email
 ## 6.5 同安全相關的HTTP首部
 強化安全的HTTP Header多以"X-"開頭。
 ### 6.5.1 X-Content-Type-Options
-IE自帶Content Sniffing功能，會忽略Content-Type。
+IE自帶Content Sniffing功能，自動偵測Content-Type，而去忽略API Header的Content-Type。
 ### 6.5.2 X-XSS-Protection
 瀏覽器可以檢測跟防禦XSS攻擊。Chrome和Safari無法禁用。
 
-p.s. 這個是舊有的屬性，基本上可以被 Content-Security-Policy 取代
+:::caution p.s. 這個是舊有的屬性，基本上可以被 Content-Security-Policy 取代
 
 [XSS-Protection-MDN](https://developer.mozilla.org/zh-CN/docs/Web/HTTP/Headers/X-XSS-Protection)
+:::
 
-:::info
-video 49:40
+:::info video 49:35
 :::
 
 ### 6.5.3 X-Frame-Options
@@ -257,14 +267,17 @@ video 49:40
 Content-Security-Policy: default-src 'none'
 ```
 
+:::info video 49:35
+:::
+
 ### 6.5.5 Strict-Transport-Security
-限定使用者只能透過HTTPS訪問網站，使用HTTP會直接轉向HTTPS
+限定使用者只能透過HTTPS訪問網站，使用HTTP會直接轉向HTTPS。
 
 max-age: 告知瀏覽器應該保持強制HTTPS存取的時間有多長。
 
 :::caution
-* 未加密的首次連線為中間人留下了機會。他們可以使用中間人攻擊將使用者定向至惡意網站而非使用者預期的網站的安全版本。
-* 瀏覽器會忽略 HTTP 站點所回應的 Strict-Transport-Security 標頭，因為在 HTTP 連線下，該標頭可能是被惡意添加或是竄改的。
+* **未加密的首次連線**為中間人留下了機會。他們可以使用中間人攻擊將使用者定向至惡意網站而非使用者預期的網站的安全版本。
+* 瀏覽器會忽略 **HTTP** 站點所回應的 Strict-Transport-Security 標頭，因為在 HTTP 連線下，該標頭可能是被惡意添加或是竄改的。
 :::
 
 ### 6.5.6 Public-Key-Pins
@@ -289,7 +302,7 @@ DDoS阻斷服務攻擊：透過程式機械式不斷訪問，讓伺服器忙於�
 
 * 用什麼樣的機制來識別用戶
 * 如何確定限速的數值
-* 以什麼單位來設置線束的數值
+* 以什麼單位來設置限速的數值
 * 在什麼時候重置限速的數值
 
 (表6-2 已公布訪問上限次數的API p.193
@@ -326,7 +339,7 @@ Etsy服務使用Progressive rate limit(累進限速)方式。
 
 可以在Header提供Retry-After來提示用戶需要多久再發布新的請求。
 
-書）表6-3 使用429以外狀態碼的例子 p.197
+表6-3) 使用429以外狀態碼的例子 p.197
 
 **403 Forbidden**
 
@@ -369,7 +382,7 @@ Etsy服務使用Progressive rate limit(累進限速)方式。
 :::
 
 ## 6.7 小結
-* 當存在個人訊息等不希望對特定用戶之外的其他人洩漏訊息時，使用HTTPS
+* 當存在個人訊息等不希望對特定用戶之外的其他人洩漏訊息時，使用HTTPS。
 * 防範XSS、XSRF攻擊等普通的Web站點也會遇到的威脅之外，還要注意JSON劫持等API服務特有的安全問題。
 * 添加有助於增強安全性的HTTP Header。
 * 透過設置訪問限速的方法，避免因部分用戶過量訪問而給伺服器端帶來巨大負擔。
