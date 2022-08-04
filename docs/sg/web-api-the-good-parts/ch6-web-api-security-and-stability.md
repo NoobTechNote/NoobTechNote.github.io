@@ -49,7 +49,7 @@ HTTPS會影響SEO：
 [中間人攻擊](https://zh.wikipedia.org/zh-tw/%E4%B8%AD%E9%96%93%E4%BA%BA%E6%94%BB%E6%93%8A)：例如，在一個未加密的Wi-Fi 無線存取點的接受範圍內的中間人攻擊者，可以將自己作為一個中間人插入這個網路
 
 客戶端需檢查：
-- 簽證發行方是否可信
+- 簽證發行方是否可信 IETF(Certification and Public Key Pinning機制，檢查公鑰)
 - 驗證證書有效日期
 - 檢查伺服器端證書提示的通用名稱(Common Name)與實際連線網址是否相符
   - 2014年前Android的Apache HttpComponents HttpClient、HttpAsyncClient未檢驗。
