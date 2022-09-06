@@ -4,11 +4,27 @@ sidebar_label: "Ch7: SRE - 單一職責原則"
 sidebar_position: 7
 ---
 
+# SOLID
+
+> 好的軟體架構始於 clean code。
+
+- 能容忍變化，
+- 容易理解，而且
+- 是許多軟體系統中能夠使用的元件的基礎。
+
+> 中層級：定義模組和元件內使用的軟體結構類型
+
+- SRE: 單一職責原則
+- OCP: 開放-封閉原則
+- LSP: 里氏替換原則
+- ISP: 介面隔離原則
+- DIP: 依賴反轉原則
+
+---
+
 # Single Responsibility Principle
 
 - 一個模組應該只對唯一的一個角色負責
-
-軟體開發人員需要講兩者維持在高價值，但往往都會著重其中一個而忽略另一個
 
 - 模組(Module)：
   > 一個原始檔(source file)
@@ -46,6 +62,8 @@ sidebar_position: 7
 FACADE 模式
 
 ![較少函數的FACADE模式](./ch7/7.5.png)
+
+## Example
 
 ```ts
 class Book {
