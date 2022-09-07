@@ -88,3 +88,32 @@ interface Square extends Shape {
 
 // Implementation...
 ```
+
+# Example 2
+
+* LoadingProvider Component的children參數，符合LSP
+
+```ts
+function LoadingProvider(isLoading: boolean, children: React.ReactNode) {
+  return isLoading ? <svg>...</svg> : children;
+}
+
+function Button({text: string})  {
+  return <button>{text}</button>;
+}
+
+function Image({url: string}) {
+  return <img href={url} />
+}
+```
+
+```jsx
+<LoadingProvider isLoading={isLoading}>
+  <Button text='Click me!' />
+</LoadingProvider>
+
+<LoadingProvider isLoading={isLoading}>
+  <Image url="https://sample.img.url" />
+</LoadingProvider>
+
+```

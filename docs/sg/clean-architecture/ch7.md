@@ -96,3 +96,48 @@ class Persistence {
   }
 }
 ```
+
+## Example 2
+
+* 這個例子，Book Model符合SRP嗎？為什麼？
+
+```js
+// MVC Model
+class Book extends Model {
+  constructor() {
+    this.conn = mysql.createConnection({...});
+  }
+
+  public get() {
+    const conn = this.conn
+    return new Promise((resolve, reject) => {
+      conn.query('SELCT * FROM book', (result, error) => {
+        if (error) { reject(error) }
+        resolve(result)
+      })
+    })
+  }
+
+  public write(books) {
+    // ...
+  }
+
+  destructor() {
+    this.conn.close()
+  }
+}
+
+// MVC Controller
+async function controller() {
+  const bookModel = new Book()
+  return await bookModel.get()
+}
+
+// Background Cronjob
+async function updateAuthorJob() {
+  const bookModel = new Book()
+  const books = await bookModel.get()
+  books.map(book => ({...book, author: 'bob'}))
+  await bookModel.write(books)
+}
+```
