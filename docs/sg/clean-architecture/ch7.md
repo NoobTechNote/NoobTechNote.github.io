@@ -59,7 +59,7 @@ sidebar_position: 7
 
 ![FACADE模式](./ch7/7.4.png)
 
-FACADE 模式
+FACADE [fəˈsäd] 模式
 
 ![較少函數的FACADE模式](./ch7/7.5.png)
 
