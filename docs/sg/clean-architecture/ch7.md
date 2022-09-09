@@ -1,6 +1,6 @@
 ---
-title: "Ch7: SRE - 單一職責原則"
-sidebar_label: "Ch7: SRE - 單一職責原則"
+title: "Ch7: SRP - 單一職責原則"
+sidebar_label: "Ch7: SRP - 單一職責原則"
 sidebar_position: 7
 ---
 
@@ -99,7 +99,7 @@ class Persistence {
 
 ## Example 2
 
-* 這個例子，Book Model符合SRP嗎？為什麼？
+- 這個例子，Book Model 符合 SRP 嗎？為什麼？
 
 ```js
 // MVC Model
