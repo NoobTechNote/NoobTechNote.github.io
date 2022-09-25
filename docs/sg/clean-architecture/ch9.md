@@ -15,6 +15,8 @@ sidebar_position: 9
 
 ## Example
 
+- Bad way:
+
 ```ts
 class Rectangle {
   constructor(private width: number, private length: number) {}
@@ -70,6 +72,8 @@ if (rect instanceof Square) {
 }
 ```
 
+- Good way:
+
 > Type checking a polymorphic value is a good indicator of an LSP violation.
 
 ```ts
@@ -91,19 +95,19 @@ interface Square extends Shape {
 
 # Example 2
 
-* LoadingProvider Component的children參數，符合LSP
+- LoadingProvider Component 的 children 參數，符合 LSP
 
 ```ts
 function LoadingProvider(isLoading: boolean, children: React.ReactNode) {
   return isLoading ? <svg>...</svg> : children;
 }
 
-function Button({text: string})  {
+function Button({ text: string }) {
   return <button>{text}</button>;
 }
 
-function Image({url: string}) {
-  return <img href={url} />
+function Image({ url: string }) {
+  return <img href={url} />;
 }
 ```
 

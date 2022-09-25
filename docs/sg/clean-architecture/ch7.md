@@ -14,7 +14,7 @@ sidebar_position: 7
 
 > 中層級：定義模組和元件內使用的軟體結構類型
 
-- SRE: 單一職責原則
+- SRP: 單一職責原則
 - OCP: 開放-封閉原則
 - LSP: 里氏替換原則
 - ISP: 介面隔離原則
@@ -65,6 +65,8 @@ FACADE [fəˈsäd] 模式
 
 ## Example
 
+- Bad way:
+
 ```ts
 class Book {
   public title: string;
@@ -79,6 +81,8 @@ class Book {
   }
 }
 ```
+
+- Good way:
 
 ```ts
 class Book {
