@@ -113,7 +113,7 @@ public static void main(String[] args) {
         * 朝向簡化發展
             * JSON_RPC：功能弱、速度慢。犧牲功能和效率，得到協議的簡單輕便，介面與格式都更為通用，尤其適合 Web 瀏覽器。
 
-::: question
+:::info Question
 開發一個分散式系統，是不是就一定要用 RPC 呢？ 
 ::: 
 
@@ -140,12 +140,12 @@ public static void main(String[] args) {
 * 超文本驅動（Hypertext Driven）：尽管表征状态转移是由浏览器主动向服务器发出请求所引发的，浏览器是根据用户输入的 URI 地址来找到网站首页，服务器给予的首页超文本内容后，浏览器再通过超文本内部的链接来导航到了这篇文章，阅读结束时，也是通过超文本内部的链接来再导航到下一篇。浏览器作为所有网站的通用的客户端，任何网站的导航（状态转移）行为都不可能是预置于浏览器代码之中，而是由服务器发出的请求响应信息（超文本）来驱动的。这点与其他带有客户端的软件有十分本质的区别，在那些软件中，业务逻辑往往是预置于程序代码之中的，有专门的页面控制器（无论在服务端还是在客户端中）来驱动页面的状态转移。
 * 自我描述訊息（Self-Descriptive Messages）：資源的表徵可能存在多種不同型態，在訊息中應有明確的資訊告知客户端，該訊息的類型以及應該如何處理。譬如“Content-Type : application/json; charset=utf-8”。 
 ### RESTFul的系統
-* 伺服器與客戶端分離：将用户介面的邏輯和數據儲存的邏輯分開，有助於提高用户介面跨平台的可移植性
-* 無狀態：無狀態是REST的一條核心原則。REST希望伺服器不要去維護狀態，從每次客户端發送的請求中，應包括所有的必要的上下文訊息，對話(Session)訊息也由客户端負責保存，伺服器依客户端傳遞的狀態来執行處理邏輯。
+* 伺服器與客戶端分離
+* 無狀態
 * 可快取
-* 分層系统
+* 分層系統
 * 統一介面
-* 按需代码
+* 按需代碼
 ### REST的好處
 * 降低服務介面的學習成本：統一介面
 * 資源與生俱來集合與層次結構：資源為中心的介面，名詞可以產生集合與層次結構
@@ -153,3 +153,97 @@ public static void main(String[] args) {
 GET /users/icyfenix/cart/2
 ```
 * REST綁定於HTTP協議 
+
+### RMM 成熟度
+Richardson Maturity Model 將REST分為三級：
+0. The Swamp of Plain Old XML
+1. Resources：開始加入資源的概念。
+2. HTTP Verbs：加入統一介面。
+3. Hypermedia Controls：超文本驅動。Hypertext As The Engine Of Application State，HATEOAS。
+
+以醫生預約系統來做範例
+
+查詢醫生在指定時間是否有空，並向醫生預約。
+
+#### 第0級
+查詢醫生空閒時間
+
+POST /**appointmentService**?action=query HTTP/1.1
+
+預約醫生時間
+
+POST /**appointmentService**?action=confirm HTTP/1.1
+
+#### 第1級
+開始加入資源概念
+
+查詢醫生空閒時間
+
+POST /doctors/mjones HTTP/1.1
+```
+[
+	{id: 1234, start:"14:00", end: "14:50", doctor: "mjones"},
+	{id: 5678, start:"16:00", end: "16:50", doctor: "mjones"}
+]
+```
+
+預約醫生時間
+POST /schedules/1234
+
+#### 第2級
+加入統一介面
+
+查詢醫生空閒時間
+
+**GET** /doctors/mjones/**schedule?date=2020-03-04&status=open**
+```
+[
+	{id: 1234, start:"14:00", end: "14:50", doctor: "mjones"},
+	{id: 5678, start:"16:00", end: "16:50", doctor: "mjones"}
+]
+```
+
+POST /schedules/1234 HTTP/1.1
+
+回應透過HTTP Status Code：
+* 成功：
+```
+HTTP/1.1 201 Created
+
+Successful confirmation of appointment
+```
+
+* 有人搶先預約：
+```
+HTTP/1.1 409 Conflict
+
+doctor not available
+```
+
+#### 第3級
+HATEOAS，物件直接告訴你說可以做哪些事。
+
+GET /doctors/mjones/schedule?date=2020-03-04&status=open HTTP/1.1
+```
+HTTP/1.1 200 OK
+
+{
+	schedules：[
+		{
+			id: 1234, start:"14:00", end: "14:50", doctor: "mjones",
+			links: [
+				{rel: "comfirm schedule", href: "/schedules/1234"}
+			]
+		},
+		{
+			id: 5678, start:"16:00", end: "16:50", doctor: "mjones",
+			links: [
+				{rel: "comfirm schedule", href: "/schedules/5678"}
+			]
+		}
+	],
+	links: [
+		{rel: "doctor info", href: "/doctors/mjones/info"}
+	]
+}
+```
