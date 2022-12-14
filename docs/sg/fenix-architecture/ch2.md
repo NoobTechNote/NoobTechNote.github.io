@@ -76,10 +76,10 @@ public static void main(String[] args) {
     * 不必考慮傳輸成本
     * 網路是同質化的 (沒有不規則的)
 ### 三個基本問題
-* **如何表示數據？**數據包括傳遞方法的参数，以及方法執行後的返回值。即**序列化**、**反序列化**
+* **如何表示數據？**數據包括傳遞方法的参数，以及方法執行後的返回值。即**序列化(serialize)**、**反序列化(deserialize)**
     * gRPC 的Protocol Buffers
     * Web Service 的XML Serialization
-    * 众多轻量级 RPC 支持的JSON Serialization
+    * 眾多輕量級 RPC 支持的JSON Serialization
 * **如何傳遞數據？** 指如何透過網路，在兩個個服務的 Endpoint 之間操作、交換數據。
 * **如何確定方法？** 「如何表示同一個方法」，「如何找到對應的方法」 -- 介面描述語言（Interface Description Language，IDL）
 
@@ -119,10 +119,10 @@ public static void main(String[] args) {
 
 ## REST設計風格
 * 在思想上差異的核心：抽象的目標不一樣
-    * REST: 資源導向？（服務導向？） 
+    * REST: 資源導向 
     * RPC: 程序導向
 * 概念上的不同：REST不是一種遠端服務呼叫協議，REST是一種風格。
-* 使用範圍，REST與RPC，在使用上是確實有重合，但重合有多大就見仁見智了。
+* 使用範圍，REST與RPC，在使用上是確實有重疊，但重疊有多大就見仁見智了。
 ### 理解REST
 * 表現層狀態轉換（英語：Representational State Transfer，縮寫：REST）
     * 資源（Resource）
@@ -131,13 +131,13 @@ public static void main(String[] args) {
         * 當你透過電腦瀏覽此文章，瀏覽器向伺服器發出請求「我需要這個資源的**HTML格式**」，伺服器向瀏覽器回應的這個HTML就被稱之為表徵，**可以是不同種的格式**，指訊息用户交互時的表示形式。
     * 狀態（State）
         * 當你讀完這篇文章，想看後面是什麼内容時，你向伺服器發出請求「給我下一篇文章」但是下一篇是個相對概念，必須仰賴目前你正在閱讀的文章是哪一篇才能正確回應，這類在特定語境中才能產生的上下文(Context)訊息被稱為狀態。
-        * 有狀態(Stateful): 伺服器有記住用戶狀態。
+        * 有狀態(Stateful): 伺服器記住用戶狀態。
         * 無狀態(Stateless): 客戶端在請求時告訴伺服器。
     * 轉移（Transfer）
         * 伺服器透過某種方式，把「用戶目前閱讀的文章」轉變成「下一篇文章」，稱為「表徵狀態轉移」。
 * URI，Uniform Resource Identifier，統一資源標識符
     *  HTTP 協議中已經提前約定好「統一介面」，包括：GET、HEAD、POST、PUT、DELETE、TRACE、OPTIONS 七種基本操作，對特定的 URI 採取這些操作，伺服器就会觸發相對應的表徵狀態轉移。
-* 超文本驅動（Hypertext Driven）：尽管表征状态转移是由浏览器主动向服务器发出请求所引发的，浏览器是根据用户输入的 URI 地址来找到网站首页，服务器给予的首页超文本内容后，浏览器再通过超文本内部的链接来导航到了这篇文章，阅读结束时，也是通过超文本内部的链接来再导航到下一篇。浏览器作为所有网站的通用的客户端，任何网站的导航（状态转移）行为都不可能是预置于浏览器代码之中，而是由服务器发出的请求响应信息（超文本）来驱动的。这点与其他带有客户端的软件有十分本质的区别，在那些软件中，业务逻辑往往是预置于程序代码之中的，有专门的页面控制器（无论在服务端还是在客户端中）来驱动页面的状态转移。
+* 超文本驅動（Hypertext Driven）：表徵狀態轉移－透過超文本内部的連結到下一篇。由伺服器發出的回應訊息（超文本）來驅動。告訴客戶端有哪些操作可以執行（下一頁、編輯、修改......）。
 * 自我描述訊息（Self-Descriptive Messages）：資源的表徵可能存在多種不同型態，在訊息中應有明確的資訊告知客户端，該訊息的類型以及應該如何處理。譬如“Content-Type : application/json; charset=utf-8”。 
 ### RESTFul的系統
 * 伺服器與客戶端分離
@@ -166,7 +166,7 @@ Richardson Maturity Model 將REST分為三級：
 查詢醫生在指定時間是否有空，並向醫生預約。
 
 #### 第0級
-查詢醫生空閒時間
+* 查詢醫生空閒時間
 
 POST /**appointmentService**?action=query HTTP/1.1
 
@@ -175,7 +175,7 @@ POST /**appointmentService**?action=query HTTP/1.1
 POST /**appointmentService**?action=confirm HTTP/1.1
 
 #### 第1級
-開始加入資源概念
+* 開始加入資源概念
 
 查詢醫生空閒時間
 
@@ -187,13 +187,13 @@ POST /doctors/mjones HTTP/1.1
 ]
 ```
 
-預約醫生時間
+* 預約醫生時間
 POST /schedules/1234
 
 #### 第2級
 加入統一介面
 
-查詢醫生空閒時間
+* 查詢醫生空閒時間
 
 **GET** /doctors/mjones/**schedule?date=2020-03-04&status=open**
 ```
@@ -206,14 +206,14 @@ POST /schedules/1234
 POST /schedules/1234 HTTP/1.1
 
 回應透過HTTP Status Code：
-* 成功：
+    * 成功：
 ```
 HTTP/1.1 201 Created
 
 Successful confirmation of appointment
 ```
 
-* 有人搶先預約：
+    * 有人搶先預約：
 ```
 HTTP/1.1 409 Conflict
 
@@ -247,3 +247,26 @@ HTTP/1.1 200 OK
 	]
 }
 ```
+
+### REST的不足與爭議
+筆者所見過懷疑 REST 能否在實踐中真正良好應用的部分爭議問題：
+* 資源導向思想只適合做CRUD，程序導向和物件導向才能處理真正複雜的業務邏輯
+    * REST不止是CRUD，也支持自定義方法。
+
+:::info
+程序導向 -> 以算法和處理過程為中心 -> 符合電腦世界中主流的交互方式。
+物件導向 -> 將數據和行為統一、封装成物件 -> 符合現實世界的主流的交互方式。
+資源導向 -> 将數據（資源）做為抽象的主體，把行為看作是統一介面 -> 符合網路世界的主流的交互方式。
+:::
+
+* REST與HTTP完全綁定，不適合運用要求高性能傳輸的場景中
+    * HTTP並不是傳輸層協議，它是應用層協議
+* REST不利於交易(Transaction)
+    * 如果交易只是指希望保障數據的最終一致性，使用REST肯定不會有什麼阻礙。
+* REST沒有傳輸可靠性支持
+    * 是的，並沒有。HTTP傳送請求後，無法確定說是訊息沒發出去，或是伺服器沒有回應。
+* REST缺乏對資源進行「部分」和「批次」的處理能力
+    * 筆者認同，這很可能是未來資源導向的思想和API設計風格的發展方向。
+    * REST 你可以直接獲取整個資源 -> 過度獲取 OverFetching
+    * 批次修改 1000 個用戶，打了1000個API請求，可能會獲得429 Too Many Requests -> 自定義方法
+        * GraphQL
