@@ -164,7 +164,7 @@ SELECT * FROM purchases FOR UPDATE;
 
 鎖的組合：寫鎖+讀鎖+範圍鎖
 
-**TX 耗時程度:**
+**TX 嚴格程度:**
 
 SERIALIZABLE > REPEATABLE READ > READ COMMITTED > READ UNCOMMITTED
 
@@ -177,3 +177,89 @@ SERIALIZABLE > REPEATABLE READ > READ COMMITTED > READ UNCOMMITTED
 樂觀鎖（Optimistic Locking）vs. 悲觀鎖（Pessimistic Locking）
 :::
 ## 3.2 全局交易
+> 書裡定調：在「分散式」環境中仍追求「強一致性」的 TX 方案
+
+為解決「分散式」環境中的「一致性」問題，X/Open 組織提出了一套名為 X/Open XA（XA 是eXtended Architecture 的縮寫; 擴展架構），概念源自分散式交易處理參考模型([Distributed Transaction Processing](https://en.wikipedia.org/wiki/Distributed_transaction); DAP)。
+
+DTP模型概念圖
+![Distributed Transaction Processing (DTP)](./ch3/ch3-2-1.png)
+
+元件：
+- Resource Manager：提供介面共享資源的訪問(e.g. 資料庫)
+- Transaction Manager：協調 AP 和 RM，負責指示 RM 處理 TX 運作 e.g. 成功 commit，失敗 rollback
+- Application：定義交易邊界並訪問資源。
+
+案例：線上書店，用戶、商家、倉庫分別處於「不同的資料庫」中
+```java
+public void buyBook(PaymentBill bill) {
+    userTransaction.begin();
+    warehouseTransaction.begin();
+    businessTransaction.begin();
+	try {
+        userAccountService.pay(bill.getMoney());
+        warehouseService.deliver(bill.getItems());
+        businessAccountService.receipt(bill.getMoney());
+        userTransaction.commit();
+        warehouseTransaction.commit();
+        businessTransaction.commit();
+	} catch(Exception e) {
+        userTransaction.rollback();
+        warehouseTransaction.rollback();
+        businessTransaction.rollback();
+	}
+}
+```
+
+為了能讓多個資料庫共同參與的 TX 保持原子性與一致性，XA 將 TX 提交(commit)過程拆分成為兩階段
+### 兩段式提交(2 Phase Commitment; 2PC)
+前提假設：
+- 網路在提交階段的短時間內是可靠的，網路傳輸在整個過程都不會出現誤差
+- 每個參與的 TX 都有 WAL 日誌
+- 所有崩潰的節點最終都會恢復，不會一直處於崩潰狀態
+- 各節點上的 TX 狀態即使碰到機器崩潰都可從 WAL 日誌上恢復
+
+![2 Phase Commitment](./ch3/ch3-2-2.png)
+
+角色：
+- 協調者(Coordinator)：負責發起與維護兩段式提交流程
+- 參與者(Participant)：參與 TX 的資料庫
+
+階段：
+- 投票階段(Voting Phase)：
+    1. 協調者發送請求給所有的參與者 
+    2. 參與者會回覆是否已經準備好提交(e.g. `Prepare`, `Abort`)。 Note: 協調者會有 timeout 機制。
+- 提交階段(Commit Phase)：
+    1. 協調者搜集投票結果：
+        1. All `Yes`: 宣告成功，發送 `Commit` 請求給每個參與者
+        2. Not all `Yes`，協調者決定放棄交易，發送 `Abort` 給參與者
+
+缺點：
+- 單點問題：協調者的 TX 管理器無法正常運作 => 整個 TX 被 blocking
+- 效能問題：經歷兩次遠端的呼叫，多次資料持久化(
+- 資料不一致：當網路穩定性和故障恢復能力的假設不成立時，仍可能出現一致性問題
+
+### 三段式提交(3 Phase Commitment; 3PC)
+針對 2PC 提出的改進方案。
+- 「準備階段」=> `CanCommit`, `PreCommit` 階段
+- 「提交階段」 => `DoCommit` 階段
+
+![3 Phase Commitment](./ch3/ch3-2-3.png)
+
+- `CanCommit`: 類似於 2PC 的投票階段
+- `PreCommit`: 根據參與者的答覆，決定預備的 TX。
+- `DoCommit`: 原 2PC 的提交階段
+
+缺點：
+- 依舊沒有解決 2PC 資料不一致的問題
+- 處理時間也延遲了(多了一個 `PreCommit` 階段)
+
+### 小節：
+兩個演算法都是為了能達到「強一致性」的標準而設計，都不是很完美，仍無法完全滿足分散式交易所需要的「一致性」、
+「可用性」。
+
+## 3.3 共享交易
+多個服務之間會產生業務邏輯會也交集，直接讓各個服務共享同個資料庫。
+
+![共享交易](./ch3/ch3-3.png)
+
+## 3.4 分散式交易
