@@ -47,7 +47,7 @@ TX 的概念延伸到所有需要保證資料一致性的應用場景 e.g. 快�
 - 弱一致性：寫完之後，無法保證都能讀取到最新的資料
 - 最終一致性(後面談 CAP 理論)：寫完之後，最後一定能讀到最新的值
 
-## 3.1　本地交易(Local Transaction)
+## 3.1　本地交易 (Local Transaction)
 又作「Local Transaction」，適用於單個服務使用單個資料源的場景。
 
 實現原理源自於 [ARIES](https://en.wikipedia.org/wiki/Algorithms_for_Recovery_and_Isolation_Exploiting_Semantics) 理論，現代關係型資料庫的理論基礎。
@@ -83,7 +83,7 @@ TX 的概念延伸到所有需要保證資料一致性的應用場景 e.g. 快�
 
 影響資料庫的效能。
 
-### Solution: Write-Ahead Logging(WAL)
+### Solution: Write-Ahead Logging (WAL)
 > 又作「預寫日誌」，允許在 TX commit 之前，提前寫入變動資料。
 
 寫入變動資料的時間點以 TX commit 時為界去劃分，分作 `FORCE` 和 `STEAL` 兩類：
@@ -95,7 +95,8 @@ TX 的概念延伸到所有需要保證資料一致性的應用場景 e.g. 快�
     - 不允許變動資料提前寫入稱為 `NO-STEAL`
 
 **LSN–Log (Log Sequence Number Log)**
-每條 WAL log 都會帶有一串序號，稱作 [LSN] (Log Sequence Number)，紀錄 TX 改動內容。
+
+每條 WAL log 都會帶有一串序號，稱作 LSN(Log Sequence Number)，紀錄 TX 改動內容。
 
 WAL 提供額外的機制: 增加 **Undo Log** 的日誌類型。
 #### Undo Log：
@@ -146,7 +147,7 @@ TX1 的 UPDATE 遭到 TX2 覆寫，導致更新的資料不一樣
 SELECT * FROM purchases FOR UPDATE;
 ```
 
-### 常見的隔離層級：
+常見的隔離層級：
 ### Read Uncommitted
 允許讀取尚未被 `committed` 的資料，屬於最低層級。
 
@@ -176,7 +177,7 @@ SERIALIZABLE > REPEATABLE READ > READ COMMITTED > READ UNCOMMITTED
 :::info Discussion
 樂觀鎖（Optimistic Locking）vs. 悲觀鎖（Pessimistic Locking）
 :::
-## 3.2 全局交易
+## 3.2 全局交易 (Global Transaction)
 > 書裡定調：在「分散式」環境中仍追求「強一致性」的 TX 方案
 
 為解決「分散式」環境中的「一致性」問題，X/Open 組織提出了一套名為 X/Open XA（XA 是eXtended Architecture 的縮寫; 擴展架構），概念源自分散式交易處理參考模型([Distributed Transaction Processing](https://en.wikipedia.org/wiki/Distributed_transaction); DAP)。
@@ -257,9 +258,98 @@ public void buyBook(PaymentBill bill) {
 兩個演算法都是為了能達到「強一致性」的標準而設計，都不是很完美，仍無法完全滿足分散式交易所需要的「一致性」、
 「可用性」。
 
-## 3.3 共享交易
-多個服務之間會產生業務邏輯會也交集，直接讓各個服務共享同個資料庫。
+## 3.3 共享交易 (Share Transaction)
+多個服務之間會產生業務邏輯會有交集，直接讓各個服務共享同個資料庫。
 
 ![共享交易](./ch3/ch3-3.png)
 
-## 3.4 分散式交易
+## 3.4 分散式交易 (Distributed Transaction)
+資料庫正式邁入分散式的系統架構。
+![Distributed Transaction](./ch3/ch3-4-1.png)
+
+> 挑戰： 多個節點的資料分區、跨節點作資料同步
+
+### CAP 定理
+分散式計算領域所公認的著名定理 - [CAP 理論](https://en.wikipedia.org/wiki/CAP_theorem)源自 Eric Brewer [論文](https://users.ece.cmu.edu/~adrian/731-sp04/readings/GL-cap.pdf)。
+
+![CAP](./ch3/ch3-4-2.png)
+
+> 分散式系統裡，一致性(Consistence)、可用性(Availability)、分區容錯性(Partition Tolerance)三者中的兩個，另外一個必須被犧牲。
+
+#### 一致性 (**C**onsistency)
+- *強一致性：讀到的資料「總是」最新的 e.g. 銀行系統
+- 最終一致性：在一段時間後，資料會最終達到一致狀態 e.g. DNS 系統
+
+#### 可用性 (**A**vailability)
+系統不間斷地提供服務的能力 e.g. SLA
+
+客戶端在可用的時間範圍之內，盡力提供服務。
+
+冗餘(Redundant) 策略： 提供 2+ 以上的節點
+
+#### 分區容錯 (**P**artition tolerance)
+任意數量的節點間網路出現問題，系統仍能夠持續運作。
+
+分區:
+- 節點在不同地理位置
+- 節點在同個地理位置的區域網路
+- 節點在不同地理位置，但屬於內網架構
+
+比較個別捨棄 C、A、P 時所帶來的影響
+
+### CA，捨棄 P
+放棄分區容錯，等於不考慮分散式系統架構。
+
+> 單機資料庫下引進 CAP 定理似乎沒太大意義？非獨立的選擇條件
+
+### CP，捨棄 A
+關注資料的「強一致性」，滿足一致性(C)、分區容錯性(P)，用於對資料品質要求很高的場域。
+
+### AP，捨棄 C
+關注資料的「可用性」a.k.a. 水平擴展，滿足可用性(A)、分區容錯性(P)
+
+> 取得平衡的設計:
+> 不追求「強一致性」，採用「最終一致性」 => 適合資料更新容許一點延遲的場合
+> 現實設計的系統可放寬一致性和可用性標準
+
+:::infoDiscussion
+- CAP 中的 Consistency vs. ACID 中的 Consistency
+- CAP 理論落地實踐的細節
+:::
+
+補充資料：[CAP-FAQ](https://github.com/henryr/cap-faq)
+
+### 可靠事件隊列
+「最終一致性的概念」源自 Dan Pritchett 發表的論文 - [Base: An Acid Alternative](https://queue.acm.org/detail.cfm?id=1394128)
+
+BASE 分別是：
+- 基本可用性(**B**asically **A**vailable)：分散式系統在出現故障時，保證核心可用
+- 軟狀態(**S**oft State)：允許系統存在中間狀態，而該中間狀態不會影響系統整體可用性
+- 最終一致性(**E**ventually Consistent)：在一段時間後，資料會最終達到一致狀態
+
+> 對 CAP 的延伸和補充，即便無法達成強一致性，但採用合適的方法達到最終一致性
+
+![可靠事件隊列](./ch3/ch3-4-3.png)
+
+延伸： [最大努力交付(Best-effort delivery)](https://en.wikipedia.org/wiki/Best-effort_delivery) e.g. TCP 協議
+
+### TCC 交易
+可靠消息隊列雖保證最終的結果相對可靠，但整個過程完全沒有任何隔離性，TCC 解決缺乏隔離性帶來的問題。
+
+- `Try`：嘗試執行階段，完成所有業務可執行性的檢查，並且預留好全部需用到的業務資源。
+- `Confirm`：確認執行階段，不做任何業務檢查，直接使用 `Try` 階段準備的資源來完成業務處理。
+- `Cancel`：取消執行階段，釋放 `Try` 階段預留的業務資源。 
+
+**TCC - Try**
+
+![TCC-Try](./ch3/ch3-4-4.png)
+
+**TCC - Confirm**
+
+![TCC-Try](./ch3/ch3-4-5.png)
+
+[圖3-8 TCC 的執行過程](http://icyfenix.cn/architect-perspective/general-architecture/transaction/distributed.html#tcc-%E4%BA%8B%E5%8A%A1)
+
+### SAGA 交易
+
+
