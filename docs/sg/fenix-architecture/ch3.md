@@ -236,7 +236,7 @@ public void buyBook(PaymentBill bill) {
 
 缺點：
 - 單點問題：協調者的 TX 管理器無法正常運作 => 整個 TX 被 blocking
-- 效能問題：經歷兩次遠端的呼叫，多次資料持久化(
+- 效能問題：經歷兩次遠端的呼叫，多次資料持久化
 - 資料不一致：當網路穩定性和故障恢復能力的假設不成立時，仍可能出現一致性問題
 
 ### 三段式提交(3 Phase Commitment; 3PC)
@@ -309,8 +309,8 @@ public void buyBook(PaymentBill bill) {
 關注資料的「可用性」a.k.a. 水平擴展，滿足可用性(A)、分區容錯性(P)
 
 > 取得平衡的設計:
-> 不追求「強一致性」，採用「最終一致性」 => 適合資料更新容許一點延遲的場合
-> 現實設計的系統可放寬一致性和可用性標準
+> - 不追求「強一致性」，採用「最終一致性」 => 適合資料更新容許一點延遲的場合
+> - 現實設計的系統可放寬一致性和可用性標準
 
 :::infoDiscussion
 - CAP 中的 Consistency vs. ACID 中的 Consistency
@@ -351,5 +351,16 @@ BASE 分別是：
 [圖3-8 TCC 的執行過程](http://icyfenix.cn/architect-perspective/general-architecture/transaction/distributed.html#tcc-%E4%BA%8B%E5%8A%A1)
 
 ### SAGA 交易
+> 將大的 TX 拆成多個小的 TX，適用在長時間交易(long running transactions)，。
 
+- 大 TX 拆成若干個小 TXs，按順序進行提交 -> Ti
+- 替每一個小的 TX 設計補償機制 -> Ci
 
+若所有小的 TX 未完整成功提交，便啟動恢復機制：
+- 正向恢復(Forward Recovery): TX提交失敗，則一直對TX進行「重試」，直到成功為止; T1,T2....Ti(失敗),Ti(重試)....Ti+1....Tn
+- 反向恢復(Backward Recovery): TX 提交失敗，則一直執行 Ci 對 Ti 進行「補償」，直到成功為止; T1,T2....Ti(失敗),Ci(補償)...,C2,C1。
+
+考量到本身可能會崩潰，設計日誌機制(a.k.a SAGA Log)以保證系統恢復後能追蹤到小的 TX 的執行情況。
+
+### 總結：
+分散式交易中沒有一招打天下的解決辦法，評估當下的情境，選用合適的 TX 處理方案才是有效的做法
