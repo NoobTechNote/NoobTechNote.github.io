@@ -1,6 +1,6 @@
 ---
-title: 'Ch3: 事務處理'
-tsidebar_label: 'Ch3: 事務處理'
+title: 'Ch3: 交易處理'
+tsidebar_label: 'Ch3: 交易處理'
 sidebar_position: 3
 ---
 
@@ -16,6 +16,8 @@ sidebar_position: 3
 **Transaction(TX):**
 - SQL 語句的集合，視為一個工作單元，資料庫處理的邏輯單位
 - 週期：Begin → Commit (or Rollback)
+
+![ACID TX](./ch3/ACID-TX.gif)
 
 :::info目的
 保持資料庫中資料狀態的「一致性」**C**onsistency
@@ -108,30 +110,36 @@ WAL 提供額外的機制: 增加 **Undo Log** 的日誌類型。
 #### WAL 故障恢復時會執行三個階段：
 - Analysis(分析)：從硬碟裡尋找最後(新)一次的檢查點(已成功地寫入硬碟裡滿足持久化)，開始對日誌進行掃描，找出沒有結束記錄的 TX，組成集合待恢復的 TX。
 - Redo(重做)：分析階段中產生的待恢復的 TX 集合來還原狀態。
-- Undo(回滾)：經過分析、重做階段後剩餘待恢復的 TX 集合，即需要回滾的 TX，依 Undo Log 內容將提前寫入硬碟的資料改重新寫回去。
+- Undo(回滾)：經過分析、重做階段後剩餘待恢復的 TX 集合，即需要回滾的 TX，依 Undo Log 內容將提前寫入硬碟的資料修改重新寫回去。
 
 ![FORCE 和STEAL 的四種組合關係](./ch3/ch3-1-2.png)
 
 ## 3.1.2 實現隔離性
 資料庫遇到多個 TX 的併發(Concurrency)問題：
 
-以下皆以假定「兩個並行」的 TX 為例
+以下皆以假定「兩個並行」的 TX 為例。
+
+> 註：經 [Hussein Nasser](https://www.husseinnasser.com/p/about-hussein.html) 同意，以下圖片均來自簡報部分的內容。
 
 **Dirty Read:**
 
 一個 TX 處理過程中讀取到另一個 TX 未 `committed` 的資料
+![dirty-read](./ch3/ACID-dirty-read.gif)
 
 **Phantom Read:**
 
 兩個完全相同的範圍 TX，連續兩次讀取時，讀取出來的 **「筆數」** 跟上次不同
+![Phantom-read](./ch3/ACID-Phantom-read.gif)
 
 **Non-repeatable Read (Read Skew):**
 
-同一個 Transaction 中，重複讀取時會拿到不一致的資料
+同一個 TX 中，重複讀取時會拿到不一致的資料
+![Non-repeatable-read](./ch3/ACID-Non-repeatable-read.gif)
 
 **Lost updates:**
 
 TX1 的 UPDATE 遭到 TX2 覆寫，導致更新的資料不一樣
+![Lost-updates](./ch3/ACID-Lost-updates.gif)
 
 > 常見手段：加鎖🔒
 > - **寫鎖（Write Lock; Exclusive Lock -> X-Lock）：**
@@ -157,7 +165,7 @@ SELECT * FROM purchases FOR UPDATE;
 
 鎖的組合：寫鎖+讀鎖(讀完之後釋放鎖)
 ### Repeatable Read 
-讀到的資料只會是 transaction 開始前已經 `committed` 的資料，不會讀取到尚未 `committed` 的資料，或者在 TX 期間被其他並行的 TX 完成 `committed` 的變更
+讀到的資料只會是 TX 開始前已經 `committed` 的資料，不會讀取到尚未 `committed` 的資料，或者在 TX 期間被其他並行的 TX 完成 `committed` 的變更
 
 鎖的組合：寫鎖+讀鎖(持續)
 ### Serializable
@@ -165,9 +173,22 @@ SELECT * FROM purchases FOR UPDATE;
 
 鎖的組合：寫鎖+讀鎖+範圍鎖
 
+實現方法：
+- 連續執行 TX： 簡單粗暴，每一個時間點只會有一個 TX 執行。
+- 二階段鎖 (Two-Phase Locking; 2PL)：
+    - TX1 讀資料 & TX2 寫資料，TX2 必須等 TX1 完成提交 or 中斷
+    - TX1 寫資料，而 TX2 讀資料，TX2 仍必須等 TX1 完成提交 or 中斷
+- 序列化快照隔離 (Serializable Snapshot Isolation; SSI)
+
+Two-Phase Locking - source: [How does the 2PL (Two-Phase Locking) algorithm work](https://vladmihalcea.com/2pl-two-phase-locking/)
+![2PL](./ch3/2PL.png)
+
 **TX 嚴格程度:**
 
 SERIALIZABLE > REPEATABLE READ > READ COMMITTED > READ UNCOMMITTED
+
+隔離層級比較表(以 [Postgres](https://www.postgresql.org/docs/current/transaction-iso.html) 為例)：
+![PG-Transaction-Isolation-Levels](./ch3/PG-Transaction-Isolation-Levels.png)
 
 ### Snapshot(MVCC)
 對每個產生的新資料做 snapshot，產生一個新版本，同時保留舊的版本，允許 TX 讀取這些 snapshot 的最新版本 => Multi-Version Concurrency Control (MVCC) 的方式實現
@@ -179,16 +200,6 @@ SERIALIZABLE > REPEATABLE READ > READ COMMITTED > READ UNCOMMITTED
 :::
 ## 3.2 全局交易 (Global Transaction)
 > 書裡定調：在「分散式」環境中仍追求「強一致性」的 TX 方案
-
-為解決「分散式」環境中的「一致性」問題，X/Open 組織提出了一套名為 X/Open XA（XA 是eXtended Architecture 的縮寫; 擴展架構），概念源自分散式交易處理參考模型([Distributed Transaction Processing](https://en.wikipedia.org/wiki/Distributed_transaction); DAP)。
-
-DTP模型概念圖
-![Distributed Transaction Processing (DTP)](./ch3/ch3-2-1.png)
-
-元件：
-- Resource Manager：提供介面共享資源的訪問(e.g. 資料庫)
-- Transaction Manager：協調 AP 和 RM，負責指示 RM 處理 TX 運作 e.g. 成功 commit，失敗 rollback
-- Application：定義交易邊界並訪問資源。
 
 案例：線上書店，用戶、商家、倉庫分別處於「不同的資料庫」中
 ```java
@@ -211,6 +222,16 @@ public void buyBook(PaymentBill bill) {
 }
 ```
 
+為解決「分散式」環境中的「一致性」問題，X/Open 組織提出了一套名為 X/Open XA（XA 是eXtended Architecture 的縮寫; 擴展架構），概念源自分散式交易處理參考模型([Distributed Transaction Processing](https://en.wikipedia.org/wiki/Distributed_transaction); DAP)。
+
+DTP模型概念圖
+![Distributed Transaction Processing (DTP)](./ch3/ch3-2-1.png)
+
+元件：
+- Resource Manager：提供介面共享資源的訪問(e.g. 資料庫)
+- Transaction Manager：協調 AP 和 RM，負責指示 RM 處理 TX 運作 e.g. 成功 commit，失敗 rollback
+- Application：定義交易邊界並訪問資源。
+
 為了能讓多個資料庫共同參與的 TX 保持原子性與一致性，XA 將 TX 提交(commit)過程拆分成為兩階段
 ### 兩段式提交(2 Phase Commitment; 2PC)
 前提假設：
@@ -219,11 +240,11 @@ public void buyBook(PaymentBill bill) {
 - 所有崩潰的節點最終都會恢復，不會一直處於崩潰狀態
 - 各節點上的 TX 狀態即使碰到機器崩潰都可從 WAL 日誌上恢復
 
-![2 Phase Commitment](./ch3/ch3-2-2.png)
-
 角色：
 - 協調者(Coordinator)：負責發起與維護兩段式提交流程
 - 參與者(Participant)：參與 TX 的資料庫
+
+![2 Phase Commitment](./ch3/ch3-2-2.png)
 
 階段：
 - 投票階段(Voting Phase)：
