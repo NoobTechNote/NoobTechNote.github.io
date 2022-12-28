@@ -80,7 +80,6 @@ Cache-Control: max-age=600
 - Http/1.1 協議開始支援
 - 如與 Expires 有衝突，則以 Cache-Control 為準
 - 同時出現於 request 與 response header
--
 - 提供多項參數來實現不同的快取機制:
   - max-age: 定義在請求時間多少秒後失效
   - s-maxage: 同 max-age， 差別在於這是定義 CDN 或 Proxy 的快取時效
