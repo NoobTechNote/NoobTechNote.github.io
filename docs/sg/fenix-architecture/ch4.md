@@ -193,7 +193,6 @@ Vary: Accept, User-Agent
 
 - 一種前端優化的手段，避免在各層級的服務器都沒有快取的情境下，DNS 查詢速度太慢的問題
 - 作法為，在網頁載入時生成一個 link 請求，促使瀏覽器提前對該域名進行預解釋，譬如下面代碼所示：
-  可透過 DNS Prefetching 避免此問題：如果網站後續要使用來自於其他域的資源，那就在網頁加載時生成一個 link 請求，促使瀏覽器提前對該域名進行預解，如下面所示：
 
 ```html
 <link rel="dns-prefetch" href="//domain.not-icyfenx.cn" />
