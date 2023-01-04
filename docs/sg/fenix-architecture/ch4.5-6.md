@@ -14,6 +14,19 @@ sidebar_position: 5
 - 四層的優勢是性能高，七層的優勢是功能強
 - 做多級混合負載均衡，通常是低層的負載均衡在前，高層的負載均衡在後
 
+<center>表 4-1 OSI 七層模型</center>
+
+|     | <div>**層**</div> | <div>**數據單元**</div> | **功能**                                                                                                                                         |
+| --- | ------------------------------------- | ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 7   | 應用層 <br/>Application Layer         | 數據<br/>Data                              | 提供為應用軟件提供服務的接口，用於與其他應用軟件之間的通信。典型協議：HTTP、HTTPS、FTP、Telnet、SSH、SMTP、POP3 等                               |
+| 6   | 表達層<br/>Presentation Layer         | 數據 <br/>Data                             | 把數據轉換爲能與接收者的系統格式兼容並適合傳輸的格式。                                                                                           |
+| 5   | 會話層 <br/>Session Layer             | 數據 <br/>Data                             | 負責在數據傳輸中設置和維護計算機網絡中兩臺計算機之間的通信連接。                                                                                 |
+| 4   | 傳輸層 <br/>Transport Layer           | 數據段<br/>Segments                        | 把傳輸表頭加至數據以形成數據包。傳輸的表頭包含了所使用的協議等發送信息。典型協議：TCP、UDP、RDP、SCTP、FCP 等                                      |
+| 3   | 網絡層 <br/>Network Layer             | 數據包<br/>Packets                         | 決定數據的傳輸路徑選擇和轉發，將網絡表頭附加至數據段後以形成報文（即數據包）。典型協議：IPv4/IPv6、IGMP、ICMP、EGP、RIP 等                       |
+| 2   | 數據鏈路層 <br/>Data Link Layer       | 數據幀<br/>Frame                           | 負責點對點的網絡尋址、錯誤偵測和糾錯。当表頭和表尾被附加至數據包後，就形成數據幀（Frame）。典型協議：WiFi（802.11）、Ethernet（802.3）、PPP 等。 |
+| 1   | 物理層<br/>Physical Layer             | 比特流<br/>Bit                             | 在物理網絡上傳送數據幀，它負責管理電腦通信設備和網絡媒體之間的互通。包括了針脚、電壓、綫纜規範、集綫器、中繼器、網卡、主機接口卡等。               |
+
+
 ### 四層負載均衡
 
 :::info 四層負載均衡
@@ -28,7 +41,7 @@ sidebar_position: 5
 使用這種負載均衡模式時，真實物理服務器集群所有機器的[虛擬IP地址（Virtual IP Address，VIP）](https://en.wikipedia.org/wiki/Virtual_IP_address)需要被配置成與負載均衡器的VIP一樣。
 這樣從負載均衡器轉發的第三層的數據包可以直接在Real Server上被處理，并且響應結果不用再通過負載均衡器進行地址交換，可以直接返回到客戶端，效率高。
 
-![數據鏈路層負載均衡](./Ch4/4-8.png)
+![數據鏈路層負載均衡](./ch4/4-8.png)
 
 這種負載均衡模式也被稱爲*三角傳輸模式（Direct Server Return，DSR）*、*單臂模式（Single Legged Mode）*或*直接路由（Direct Routing）*。
 
@@ -45,7 +58,7 @@ sidebar_position: 5
 Real server上要有拆包機制，可以把負載均衡器加的Headers拿掉，處理原來的數據包。
 這種方式叫*[IP隧道（IP Tunnel）](https://en.wikipedia.org/wiki/IP_tunnel)*傳輸。
 
-![IP隧道模式](./Ch4/4-9.png)
+![IP隧道模式](./ch4/4-9.png)
 
 優點：
 - 可以跨VLAN傳輸
@@ -60,7 +73,7 @@ Real server上要有拆包機制，可以把負載均衡器加的Headers拿掉�
 
 和IP隧道模式類似，不過是直接把請求數據包中的目標IP改為Real Server的IP。
 
-![NAT模式](./Ch4/4-10.png)
+![NAT模式](./ch4/4-10.png)
 
 優點：
 - 相比IP隧道模式，不要求real server要能拆包
@@ -147,32 +160,32 @@ Real server、負載均衡器和客戶端三者之間由兩條獨立的TCP通道
 若要考慮緩存的其他屬性，就會涉及到不同緩存方案的權衡問題。
 如下圖中所示，主流的進程内緩存實現方案對比性能差異明顯。
 
-![8綫程、75%讀、25%寫的[吞吐量比較](https://github.com/ben-manes/caffeine/wiki/Benchmarks?spm=a2c4e.10696291.0.0.319f19a4dRjjn6#read-100-1)](./Ch4/4-12.png)
+![8綫程、75%讀、25%寫的[吞吐量比較](https://github.com/ben-manes/caffeine/wiki/Benchmarks?spm=a2c4e.10696291.0.0.319f19a4dRjjn6#read-100-1)](./ch4/4-12.png)
 
 吞吐量收多方面因素的共同影響：
 - 存在競爭風險時如何處理同步（主要有使用鎖實現的悲觀同步和使用CAS實現的樂觀同步）
 - 如何避免[偽共享現象（False Sharing）](https://en.wikipedia.org/wiki/False_sharing)
 - 【最關鍵】如何設計資料結構盡可能避免數據競爭
 
-##### 如何設計資料結構盡可能避免數據競爭
-
 最主要的數據競爭源於爲了實現擴展功能（緩存的淘汰策略、失效重載等），伴隨讀寫操作需要做資料的狀態維護。
 
 對上述問題有兩種處理思路：
 - 以Guava Cache爲代表的同步處理機制，訪問緩存和狀態變更的操作一起做，用分段加鎖的方式減少數據競爭。
 - 以Caffeine為代表的異步日志提交機制，參考了經典的數據庫設計理論，將對讀寫數據的過程看作是日志的提交過程。
-  Caffeine給每條綫程都設置專門的[環形緩存區](https://en.wikipedia.org/wiki/Circular_buffer)來記錄由於數據讀取而產生的狀態變動日志。
-  讀取緩存時，主句從ConcurrentHashMap返回，狀態信息變更存入緩存中，有後臺綫程異步處理。
-  異步處理速度跟不上狀態變更的速度就會導致緩衝區被寫滿，此後的狀態變更信息會被丟棄知道緩衝區重新富餘。
-  Caffeine通過環形緩存區達到幾乎和ConcurrentHashMap相同的讀取性能；
-  在寫入數據時，Caffeine不允許丟失任何狀態，所以使用ArrayQueue來存放狀態變更信息，有一定的性能損失，相比ConcurrentHashMap約慢10%。
+
+作者特別介紹Caffeine的實現方式：給每條綫程都設置專門的[環形緩存區](https://en.wikipedia.org/wiki/Circular_buffer)來記錄由於數據讀取而產生的狀態變動日志。
+讀取緩存時，數據從ConcurrentHashMap返回，狀態信息變更存入緩存中，由後臺綫程異步處理。
+異步處理速度跟不上狀態變更的速度就會導致緩衝區被寫滿，此後的狀態變更信息會被**丟棄**直到緩衝區重新富餘。
+
+Caffeine通過環形緩存區達到幾乎和ConcurrentHashMap相同的讀取性能；
+在寫入數據時，Caffeine不允許丟失任何狀態，所以使用ArrayQueue來存放狀態變更信息，有一定的性能損失，相比ConcurrentHashMap約慢10%。
 
 :::info [環形緩衝（Ring Buffer或Circular Buffer）](https://en.wikipedia.org/wiki/Circular_buffer)
 
 一種擁有讀、寫兩個指針的資料結構，在CS領域中有廣汎的應用。
 
 ![](./ch4/4-13.gif)
-[環形緩衝工作原理](https://en.wikipedia.org/wiki/File:Circular_Buffer_Animation.gif)
+<center> [環形緩衝工作原理](https://en.wikipedia.org/wiki/File:Circular_Buffer_Animation.gif)</center>
 :::
 
 
@@ -194,9 +207,9 @@ Real server、負載均衡器和客戶端三者之間由兩條獨立的TCP通道
   維護兩個Cache，window cache讓新數據纍計熱度根據LRU淘汰，如果能通過TinyLFU閾值的再放入main cache，根據LFU分段淘汰
   ![W-TinyLFU](./ch4/4-13-window_Tiny_LFU.png)
 
-![幾種淘汰算法在**搜索場景**下的命中率對比](./ch4/4-13.png)
+根據Caffeine官方給出的統計，在包含資料庫、網站和分析類等應用場景中，集中淘汰策略排名基本沒變，其中Optimal是理想曲綫，可以看到W-TinyLFU表現最佳。
 
-根據Caffeine官方給出的統計，在包含資料庫、網站和分析類等應用場景中，集中淘汰策略排名基本沒變，其中Optimal是理想曲綫。
+![幾種淘汰算法在**搜索場景**下的命中率對比](./ch4/4-13.png)
 
 
 #### 擴展功能
@@ -209,29 +222,31 @@ Real server、負載均衡器和客戶端三者之間由兩條獨立的TCP通道
 - **容量控制**：通過設定初始容量來減少擴容頻率，設定最大容量來觸發淘汰機制
 - **引用方式**：可以將數據設置爲軟引用或弱引用，將緩存與Java虛擬機的垃圾收集機制聯係起來
 - **統計信息**： 提供緩存命中率、平均加載時間和自動回收技術等統計數據。
-- **持久化**： 支持吧數據寫到數據庫或磁盤，分佈式緩存中比較用得到
+- **持久化**： 支持吧數據寫到數據庫或磁盤，分佈式緩存中比較用得到，e.g. [Redis](https://redis.io/)就支持持久化，[Memcache](https://memcached.org/)就不行
 
 #### 分佈式支持
-即是否能在各個服務節點中高效地被共享，與網絡相關的操作在這裏比較關鍵。根據使用緩存的需求選擇不同分佈式緩存：
+即是否能在各個服務節點中高效地被共享，與網絡相關的操作在這裏比較關鍵。
+
+根據使用緩存的需求選擇不同分佈式緩存：
 - 甚少更新但頻繁讀取，適合用**複製式緩存**：
   每個節點都有一個副本，讀取性能高，但數據變更代價大。代表有[JBossCache](https://jbosscache.jboss.org/)、[Infinispan](https://infinispan.org/)。
 - 頻繁更新也頻繁讀取，適合用**集中式緩存**：
   讀寫都需要網絡訪問，讀取性能不如複製式緩存高，但不會隨著集群節點數量增加而增加負擔，且能夠為異構語言提供服務，如C語言編寫的[Memcached](https://memcached.org/)可以為Java的應用提供緩存服務。
   代表有[Redis](https://redis.io/)。
 
-根據數據一致性的要求可以把緩存分為AP和CP兩種類型。
-Redis就是AP式，高性能、高可用但不保證强一致性。
-ZooKeeper、Doozerd、Etcd 等能保證强一致性，但吞吐量不如Redis，常和Redis和其他分佈式緩存搭配使用。
+根據數據一致性的要求又可以把緩存分為AP和CP兩種類型：
+- Redis就是AP式，高性能、高可用但不保證强一致性。
+- ZooKeeper、Doozerd、Etcd 等能保證强一致性，但吞吐量不如Redis，常和Redis和其他分佈式緩存搭配使用。
 
-
+<center>
 ![多級緩存](./ch4/4-14.png)
+</center>
 
-分佈式和進程内緩存各有所長，可以互相搭配使用，構成透明多級緩存（Transparent Multilevel Cache，TMC）。缺點是：
+分佈式和進程内緩存各有所長，可以互相搭配使用，構成透明多級緩存（Transparent Multilevel Cache，TMC）如上圖所示。
+不過這樣也有些缺點：
 - 代碼侵入性大：開發人員要實現查詢和回填功能
 - 也不便於管理：超時、刷新策略要設置多遍
-- 更新數據麻煩
-
-常見的設計原則是以分佈式緩存中的數據爲準，訪問以進程内緩存爲先。
+- 更新數據麻煩，常見的設計原則是以分佈式緩存中的數據爲準，訪問以進程内緩存爲先。
 
 
 ### 常見緩存風險及其應對方法
@@ -256,9 +271,14 @@ ZooKeeper、Doozerd、Etcd 等能保證强一致性，但吞吐量不如Redis，
 緩存中數據與真實數據源中數據不一致，通常由開發者更新緩存不規範造成。
 
 解決方法即遵循緩存的設計模式：
-- Cache Aside
-- Read/Write Through
-- Write Behind Caching
+
+|緩存設計模式|讀|寫|優點|缺點|
+|-----------|--|--|---|---|
+|Cache Aside|先從緩存讀，沒有的話再讀資料庫|寫入資料庫|最簡單；保證數據不會丟失|第一次一定會miss；可能會有資料不一致的問題|
+|Read Through|只從緩存讀，由緩存負責資料庫中加載資料|寫入資料庫|clean code|第一次一定會miss；可能會有資料不一致的問題|
+|Write Through|通常搭配read through|寫入緩存和資料庫|clean code；不會有cache miss|寫入會延遲|
+|Write Behind Caching|從緩存讀取|直接寫入緩存，異步寫入資料庫|不會有cache miss；適合write heavy的場景|數據可能丟失|
+
 
 :::info總結
 服務端的緩存并非多多益善，有收益也有風險。
