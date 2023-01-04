@@ -10,11 +10,13 @@ sidebar_position: 5
 調度後方的多臺機器，以統一的接口對外服務的技術（組件）。
 :::
 
-從形式上可以分爲**四層負載均衡**（[傳輸層](https://en.wikipedia.org/wiki/OSI_model)）和**七層負載均衡**（[應用層](https://en.wikipedia.org/wiki/OSI_model)）。
+真正大型系統的負載均衡往往是多級的，這邊只討論網絡請求進入數據中心後的負載均衡。
+
+負載均衡從形式上可以分爲**四層負載均衡**（[傳輸層](https://en.wikipedia.org/wiki/OSI_model)）和**七層負載均衡**（[應用層](https://en.wikipedia.org/wiki/OSI_model)）。
 - 四層的優勢是性能高，七層的優勢是功能強
 - 做多級混合負載均衡，通常是低層的負載均衡在前，高層的負載均衡在後
 
-<center>表 4-1 OSI 七層模型</center>
+<center>表 4-1 [OSI七層模型（Open Systems Interconnection model） ](https://en.wikipedia.org/wiki/OSI_model)</center>
 
 |     | <div>**層**</div> | <div>**數據單元**</div> | **功能**                                                                                                                                         |
 | --- | ------------------------------------- | ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -104,8 +106,8 @@ Real server、負載均衡器和客戶端三者之間由兩條獨立的TCP通道
 可能可以實現的功能：
 - 所有CDN可以做的緩存方面的工作都可以實現
 - 更智能化的路由，e.g.根據用戶身份路由（VIP服務器）
-- 抵禦某些安全攻擊，e.g. 可以過濾特定報文：SYN flood、flood、SQL注入等
-- 在微服務架構中，實現鏈路處理措施
+- 抵禦某些安全攻擊，e.g. 可以過濾特定報文：SYN flood、SQL注入等
+- 在微服務架構中，實現鏈路處理措施，因爲有些故障發生在第四層以上
 
 
 ### 均衡策略與實現
@@ -141,10 +143,12 @@ Real server、負載均衡器和客戶端三者之間由兩條獨立的TCP通道
 - 從維護角度來説，緩存會**掩蓋掉一些缺陷**，讓問題更晚才被發現，或在更遠的地方被發現
 - 從安全角度來説，緩存可能**泄露某些保密數據**，也容易受到攻擊
 
-**透過升級硬件來增强CPU、I/O本身的性能比引入緩存更佳。**
+
 在衆多負面作用下，依然會選擇使用緩存的理由：
-- 緩解CPU壓力
-- 緩解I/O壓力
+- 緩解CPU壓力：cache計算結果，節省CPU算力
+- 緩解I/O壓力：cache數據讀取結果，不讓請求都直接訪問真實數據源
+
+響應性能不應是緩存的目的。**透過升級硬件來增强CPU、I/O本身的性能比引入緩存更佳。**
 
 
 ### 緩存屬性
@@ -162,7 +166,7 @@ Real server、負載均衡器和客戶端三者之間由兩條獨立的TCP通道
 
 ![8綫程、75%讀、25%寫的[吞吐量比較](https://github.com/ben-manes/caffeine/wiki/Benchmarks?spm=a2c4e.10696291.0.0.319f19a4dRjjn6#read-100-1)](./ch4/4-12.png)
 
-吞吐量收多方面因素的共同影響：
+吞吐量收到多方面因素的共同影響：
 - 存在競爭風險時如何處理同步（主要有使用鎖實現的悲觀同步和使用CAS實現的樂觀同步）
 - 如何避免[偽共享現象（False Sharing）](https://en.wikipedia.org/wiki/False_sharing)
 - 【最關鍵】如何設計資料結構盡可能避免數據競爭
@@ -185,7 +189,6 @@ Caffeine通過環形緩存區達到幾乎和ConcurrentHashMap相同的讀取性�
 一種擁有讀、寫兩個指針的資料結構，在CS領域中有廣汎的應用。
 
 ![](./ch4/4-13.gif)
-<center> [環形緩衝工作原理](https://en.wikipedia.org/wiki/File:Circular_Buffer_Animation.gif)</center>
 :::
 
 
@@ -207,7 +210,7 @@ Caffeine通過環形緩存區達到幾乎和ConcurrentHashMap相同的讀取性�
   維護兩個Cache，window cache讓新數據纍計熱度根據LRU淘汰，如果能通過TinyLFU閾值的再放入main cache，根據LFU分段淘汰
   ![W-TinyLFU](./ch4/4-13-window_Tiny_LFU.png)
 
-根據Caffeine官方給出的統計，在包含資料庫、網站和分析類等應用場景中，集中淘汰策略排名基本沒變，其中Optimal是理想曲綫，可以看到W-TinyLFU表現最佳。
+根據Caffeine官方給出的統計，在包含資料庫、網站和分析類等應用場景中，幾種淘汰策略排名基本沒變，其中Optimal是理想曲綫，可以看到W-TinyLFU表現最佳。
 
 ![幾種淘汰算法在**搜索場景**下的命中率對比](./ch4/4-13.png)
 
@@ -222,7 +225,7 @@ Caffeine通過環形緩存區達到幾乎和ConcurrentHashMap相同的讀取性�
 - **容量控制**：通過設定初始容量來減少擴容頻率，設定最大容量來觸發淘汰機制
 - **引用方式**：可以將數據設置爲軟引用或弱引用，將緩存與Java虛擬機的垃圾收集機制聯係起來
 - **統計信息**： 提供緩存命中率、平均加載時間和自動回收技術等統計數據。
-- **持久化**： 支持吧數據寫到數據庫或磁盤，分佈式緩存中比較用得到，e.g. [Redis](https://redis.io/)就支持持久化，[Memcache](https://memcached.org/)就不行
+- **持久化**： 支持把數據寫到數據庫或磁盤，分佈式緩存中比較用得到，e.g. [Redis](https://redis.io/)就支持持久化，[Memcache](https://memcached.org/)就不行
 
 #### 分佈式支持
 即是否能在各個服務節點中高效地被共享，與網絡相關的操作在這裏比較關鍵。
@@ -235,11 +238,13 @@ Caffeine通過環形緩存區達到幾乎和ConcurrentHashMap相同的讀取性�
   代表有[Redis](https://redis.io/)。
 
 根據數據一致性的要求又可以把緩存分為AP和CP兩種類型：
-- Redis就是AP式，高性能、高可用但不保證强一致性。
+- 分佈式Redis就是AP式，高性能、高可用但不保證强一致性。
 - ZooKeeper、Doozerd、Etcd 等能保證强一致性，但吞吐量不如Redis，常和Redis和其他分佈式緩存搭配使用。
 
 <center>
+
 ![多級緩存](./ch4/4-14.png)
+
 </center>
 
 分佈式和進程内緩存各有所長，可以互相搭配使用，構成透明多級緩存（Transparent Multilevel Cache，TMC）如上圖所示。
@@ -272,12 +277,12 @@ Caffeine通過環形緩存區達到幾乎和ConcurrentHashMap相同的讀取性�
 
 解決方法即遵循緩存的設計模式：
 
-|緩存設計模式|讀|寫|優點|缺點|
-|-----------|--|--|---|---|
-|Cache Aside|先從緩存讀，沒有的話再讀資料庫|寫入資料庫|最簡單；保證數據不會丟失|第一次一定會miss；可能會有資料不一致的問題|
-|Read Through|只從緩存讀，由緩存負責資料庫中加載資料|寫入資料庫|clean code|第一次一定會miss；可能會有資料不一致的問題|
-|Write Through|通常搭配read through|寫入緩存和資料庫|clean code；不會有cache miss|寫入會延遲|
-|Write Behind Caching|從緩存讀取|直接寫入緩存，異步寫入資料庫|不會有cache miss；適合write heavy的場景|數據可能丟失|
+|緩存設計模式|讀|寫|優點|缺點|應用場景|
+|-----------|--|--|---|---|----|
+|Cache Aside|先從緩存讀，沒有的話再讀資料庫|寫入資料庫|最簡單；保證數據不會丟失|第一次一定會miss；可能會有資料不一致的問題|server間數據同步|
+|Read Through|只從緩存讀，由緩存負責資料庫中加載資料|寫入資料庫|clean code|第一次一定會miss|可以接受第一次請求很慢|
+|Write Through|通常搭配read through|寫入緩存和資料庫|clean code；不會有dirty read|寫入會延遲|可以犧牲寫入速度的場景|
+|Write Behind Caching|從緩存讀取|直接寫入緩存，異步寫入資料庫|適合write heavy的場景|數據可能丟失|session的cache|
 
 
 :::info總結
