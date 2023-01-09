@@ -258,3 +258,81 @@ _圖 5-11 客戶端模式的調用時序圖_
 _圖 5-12 設備碼模式的調用時序圖_
 
 ---
+
+## 5.3 憑證
+
+### 5.3.1 Cookie-Session
+
+優點：
+
+1. 狀態訊息儲存於服務端，依靠客戶端的同源策略和 HTTP 的傳輸層安全，保證 Cookie 中的鍵值不被竊取而身份被冒用，就可避免訊息在傳輸過程中被洩露和串改
+2. 服務端有主動的狀態管理能力。可根據自己的意願隨時修改、清除任意上下文訊息。
+3. 適合用於單節點的單體服務環境
+
+### 5.3.2 JWT (JSON Web Token)
+
+**定義於 RFC 7519 標準之中，目前廣泛使用的 Token 格式，經常與 OAuth2 配合應用於分佈式的、涉及多方的應用系統中。**
+
+![圖 5-13 JWT 令牌結構](./ch5/5-13.png)
+_圖 5-13 JWT 令牌結構_
+
+使用方式：附在 Authorization 的 Header 發送給服務端，前綴在 RFC 6750 中被規定為 Bearer
+
+```
+GET /restful/products/1 HTTP/1.1
+Host: icyfenix.cn
+Connection: keep-alive
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX25hbWUiOiJpY3lmZW5peCIsInNjb3BlIjpbIkFMTCJdLCJleHAiOjE1ODQ5NDg5NDcsImF1dGhvcml0aWVzIjpbIlJPTEVfVVNFUiIsIlJPTEVfQURNSU4iXSwianRpIjoiOWQ3NzU4NmEtM2Y0Zi00Y2JiLTk5MjQtZmUyZjc3ZGZhMzNkIiwiY2xpZW50X2lkIjoiYm9va3N0b3JlX2Zyb250ZW5kIiwidXNlcm5hbWUiOiJpY3lmZW5peCJ9.539WMzbjv63wBtx4ytYYw_Fo1ECG_9vsgAn8bheflL8
+```
+
+_用 JWT 令牌的 HTTP 實際請求_
+
+:::warning
+JWT 只解決防篡改的問題，並不解決防洩漏的問題
+（圖 5-13 右邊的狀態訊息是對令牌使用 Base64URL 轉碼後得到的明文）
+:::
+
+#### JWT 結構
+
+1. 令牌頭(Header)
+2. 負載(Payload): 令牌真正需要向服務端傳遞的信息，告知服務端“這個用戶是誰”。可以完全自定義，根據具體要解決的問題不同，設計自己所需要的信息，只是總容量不能太大，受到 HTTP Header 大小的限制
+
+```
+{
+  "username": "icyfenix",
+  "authorities": [
+    "ROLE_USER",
+    "ROLE_ADMIN"
+  ],
+  "scope": [
+    "ALL"
+  ],
+  "exp": 1584948947,
+  "jti": "9d77586a-3f4f-4cbb-9924-fe2f77dfa33d",
+  "client_id": "bookstore_frontend"
+}
+```
+
+_JWT Payload 的例子_
+
+3. 簽名（Signature）：確保負載中的信息是可信的、沒有被篡改的，也沒有在傳輸過程中丟失任何信息，且只能由認證授權服務器完成（只有它知道 Secret）
+
+```
+HMACSHA256(base64UrlEncode(header) + "." + base64UrlEncode(payload) , secret)
+```
+
+優點：
+
+1. 不需要任何一個服務節點保留任何一點狀態信息，就能夠保障認證服務與用戶之間的承諾是雙方當時真實意圖的體現，是準確、完整、不可篡改、且不可抵賴的
+2. 可以攜帶少量信息，有利於 RESTful API 的設計，易達成無狀態服務
+
+缺點：
+
+1. 令牌難以主動失效：JWT 令牌一旦簽發，在到期之前就會始終有效，除非服務器部署額外的邏輯去處理失效問題
+2. 相對更容易遭受重放攻擊：解決重放攻擊需要付出比較大的代價，無論是加入全局序列號（HTTPS 協議的思路）、Nonce 字符串（HTTP Digest 驗證的思路）、挑戰應答碼（當下網銀動態令牌的思路）、還是縮短令牌有效期強制頻繁刷新令牌
+
+   - 解決方案是在信道層次（譬如啟用 HTTPS）上解決，而不提倡在服務層次（譬如在令牌或接口其他參數上增加額外邏輯）上解決
+
+3. 只能攜帶相當有限的數據：各種服務器、瀏覽器都會有各自約束的大小，因此令牌中存儲過多的數據不僅耗費傳輸帶寬，還有額外的出錯風險
+4. 必須考慮令牌在客戶端如何存儲
+5. 無狀態也不總是好的
