@@ -1,7 +1,7 @@
 ---
 title: "Ch4.5~6: 負載均衡和服務端緩存"
 tsidebar_label: "Ch4.5~6: 負載均衡和服務端緩存"
-sidebar_position: 5
+sidebar_position: 4.1
 ---
 
 ## 4.5 負載均衡 Load Balancing
