@@ -1,7 +1,7 @@
 ---
 title: 'Ch2: 存取遠端服務'
 tsidebar_label: 'Ch2: 存取遠端服務'
-sidebar_position: 1
+sidebar_position: 2
 ---
 # 存取遠端服務
 遠端服務將電腦程式
@@ -20,13 +20,13 @@ sidebar_position: 1
 RPC 出現的最初目的：為了讓電腦能夠跟呼叫本機方法一樣去呼叫遠端方法。
 
 ```java
-// Caller : 调用者，代码里的main() 
-// Callee ： 被调用者，代码里的println() 
-// Call Site ： 调用点，即发生方法调用的指令流位置 
-// Parameter ： 参数，由Caller传递给Callee的数据，即“hello world” 
-// Retval ： 返回值，由Callee传递给Caller的数据。以下代码中如果方法能够正常结束，它是void，如果方法异常完成，它是对应的异常 
-public static void main(String[] args) { 
-    System.out.println(“hello world”); 
+// Caller : 调用者，代码里的main()
+// Callee ： 被调用者，代码里的println()
+// Call Site ： 调用点，即发生方法调用的指令流位置
+// Parameter ： 参数，由Caller传递给Callee的数据，即“hello world”
+// Retval ： 返回值，由Callee传递给Caller的数据。以下代码中如果方法能够正常结束，它是void，如果方法异常完成，它是对应的异常
+public static void main(String[] args) {
+    System.out.println(“hello world”);
 }
 ```
 
@@ -38,7 +38,7 @@ public static void main(String[] args) {
 
 
 * 行程間通訊（Inter-Process Communication，IPC）的方法
-    * 管道（Pipe）或者具名管道（Named Pipe） 
+    * 管道（Pipe）或者具名管道（Named Pipe）
       * 管道典型運用就是命令列中的|操作符號，譬如：
         ```
         ps -ef | grep java
@@ -49,11 +49,11 @@ public static void main(String[] args) {
         kill -9 pid
         ```
     * 號誌（Semaphore）號誌用於两個行程之間同步協作手段，程序可以在上面進行wait()和notify()。
-  
+
   ------上面傳遞較少訊息------
     * 訊息佇列（Message Queue）克服訊號承載訊息量少，但即時性受限。
-    * 共享内存（Shared Memory） 
-  
+    * 共享内存（Shared Memory）
+
   ------上面只適合單機多行程間的通訊------
     * Socket 是更普適的行程通訊機制，可用於不同機器之間的行程通訊。
 ### 通訊的成本
@@ -114,12 +114,12 @@ public static void main(String[] args) {
             * JSON_RPC：功能弱、速度慢。犧牲功能和效率，得到協議的簡單輕便，介面與格式都更為通用，尤其適合 Web 瀏覽器。
 
 :::info Question
-開發一個分散式系統，是不是就一定要用 RPC 呢？ 
-::: 
+開發一個分散式系統，是不是就一定要用 RPC 呢？
+:::
 
 ## REST設計風格
 * 在思想上差異的核心：抽象的目標不一樣
-    * REST: 資源導向 
+    * REST: 資源導向
     * RPC: 程序導向
 * 概念上的不同：REST不是一種遠端服務呼叫協議，REST是一種風格。
 * 使用範圍，REST與RPC，在使用上是確實有重疊，但重疊有多大就見仁見智了。
@@ -138,7 +138,7 @@ public static void main(String[] args) {
 * URI，Uniform Resource Identifier，統一資源標識符
     *  HTTP 協議中已經提前約定好「統一介面」，包括：GET、HEAD、POST、PUT、DELETE、TRACE、OPTIONS 七種基本操作，對特定的 URI 採取這些操作，伺服器就会觸發相對應的表徵狀態轉移。
 * 超文本驅動（Hypertext Driven）：表徵狀態轉移－透過超文本内部的連結到下一篇。由伺服器發出的回應訊息（超文本）來驅動。告訴客戶端有哪些操作可以執行（下一頁、編輯、修改......）。
-* 自我描述訊息（Self-Descriptive Messages）：資源的表徵可能存在多種不同型態，在訊息中應有明確的資訊告知客户端，該訊息的類型以及應該如何處理。譬如“Content-Type : application/json; charset=utf-8”。 
+* 自我描述訊息（Self-Descriptive Messages）：資源的表徵可能存在多種不同型態，在訊息中應有明確的資訊告知客户端，該訊息的類型以及應該如何處理。譬如“Content-Type : application/json; charset=utf-8”。
 ### RESTFul的系統
 * 伺服器與客戶端分離
 * 無狀態
@@ -152,7 +152,7 @@ public static void main(String[] args) {
 ```
 GET /users/icyfenix/cart/2
 ```
-* REST綁定於HTTP協議 
+* REST綁定於HTTP協議
 
 ### RMM 成熟度
 Richardson Maturity Model 將REST分為三級：
