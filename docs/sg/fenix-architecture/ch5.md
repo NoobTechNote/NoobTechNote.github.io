@@ -377,3 +377,111 @@ _圖 5-14 HMAC 哈希與普通哈希算法的差別_
 
 > **普通安全強度**：在具有一定保密安全性的同時，避免消耗過多的運算資源，驗證起來也相對便捷
 > （譬如密碼要求長度、特殊字符等，再配合 HTTPS 傳輸)
+
+---
+
+## 5.5 傳輸（Transport Security）
+
+:::info
+系统如何保证通过网络传输的信息无法被第三方窃听、篡改和冒充？
+:::
+
+### 摘要、加密與簽名
+什麼是簽名?
+為什麼簽名就能讓payload中的訊息變得不可篡改跟不可抵賴呢?
+解釋數位簽章(Digital Signature)之前，必須先解釋"摘要"跟"加密"
+
+#### 摘要 (Digital Digest)
+```java
+signature = SHA256(base64UrlEncode(header) + "." + base64UrlEncode(payload) , secret)
+```
+
+Hash特性:
+1. 易變性
+   * 輸入端任何一點細微變動，會造成輸出端的結果產生極大的變化 (e.g., 檔案附上hash)
+
+易變性例子
+```sh
+> echo Tom_is_so_handsome | sha256sum 
+10a143d676527916255ba500a5c039ddc492f36de5bba50626ab8e587833a016
+> echo T0m_is_so_handsome | sha256sum
+4aee6030bd3b165cb42a53d969e1e2664fa1d5120f3978a5f6dd98a72ed76d49
+```
+2. 不可逆性
+   * 不可能從摘要結果逆向推出輸入值，常常聽到有人說破解 SHA1, MD5，指的不是解密，指的是找到碰撞的方法 
+   * [Announcing the first SHA1 collision](https://security.googleblog.com/2017/02/announcing-first-sha1-collision.html)
+
+Q: Hash 為什麼會產生碰撞 (collisions)?
+A: (鴿籠原理)
+
+加密與摘要本質區別在加密是可逆的，逆過程就是解密。以前加密需要保護演算法，現代密碼學加解密算法都完全公開。
+安全建立在計算問題的複雜度之上。常見例子就是質因數分解
+```python
+97667323933 * 128764321253 = 12576066674829627448049
+```
+如何對大數進行質因數分解，至今沒有找到多項式時間的算法。
+
+根據加密或解密是否採用同一個密鑰，來決定密碼學算法是對稱式加密還是非對稱式加密。
+對稱式加密缺點: 通信成員變多，彼此都用獨立的密鑰，數量就會與成員數量成正比。
+而更困難的問題是，當通信管道不安全時，如何才能確保拿到正確的鑰匙。
+如果假設通道是安全的，為什麼不用這個通道傳訊息就好了
+![圖 5-15 雞生蛋，蛋生雞](./ch5/5-15_chicken_egg.png)
+
+補充: RSA為什麼公鑰私鑰都可以加解密 [Understanding public/private RSA keys](https://dev.to/dandyvica/understanding-public-private-rsa-keys-3j81)
+
+解法就是，非對稱式加密!，非對稱式加密算法根據使用方法不同，可以提供兩種功能
+* 公鑰加密，私鑰解密: 這種就是加密，大家都可以用公鑰加密，但只有擁有私鑰的人能解開
+* 私鑰加密，公鑰解密: 這種就是簽章，只有擁有私鑰的人能產生加密過後的文件，大家都有公鑰可以解開內容確認是某人寫的文件
+
+但是非對稱式的計算效率比對稱式加密差上好幾個量級。而且現行的非對稱式加密不支援分組加密(只能加密不超過密鑰長度的資料)。
+
+在加密方面，一般是對稱與非稱式的結合，用非對稱來傳遞少量訊息，後續再用對稱式加密傳輸數據
+在簽名方面，一般是摘要+非對稱式加密的組合，將檔案做摘要，然後加密摘要做傳輸
+
+![三种密码学算法的对比](./ch5/5-16_crypto_comparison.png)
+
+上述方法看似可以解決很多問題，但問題是，公鑰雖然是公開的，但在網路裡，公開到底是一個什麼樣的操作
+如果網路是不安全的:
+* 攻擊者可以返回自己的公鑰，之後攻擊者都用自己的私鑰簽名，接著大家就會無條件信他的所有行為
+
+### 數字證書 (Digital Signature)
+達成信任方法不外乎以下兩種途徑:
+* 基於共同私密信息的信任
+  * 通關密語, 共同小秘密
+* 基於權威公證人的信任
+  * Tom過來跟我說，他是 VicOne 的人，我很懷疑，但我信任 Mech，Mech 擔保他確實是 VicOne 的人，那 Tom 很有可能是 VicOne 的人
+
+:::info
+## 公開金鑰基礎建設
+由硬件、软件、参与者、管理政策与流程组成的基础架构，其目的在于创造、管理、分配、使用、存储以及撤销数字证书。
+CA (Certificate Authority) 将用户的个人身份跟公开密钥链接在一起，创建过程可由 CA 的各种软件或者在人为监督下完成。
+PKI 的确定链接关系的这一角色称为注册管理中心（Registration Authority，RA）。RA 确保公开密钥和个人身份链接，可以防抵赖。
+:::
+[What is Public Key Infrastructure (PKI) by Securemetric](https://youtu.be/i-rtxrEz_E8)
+
+但是萬一有人假冒 CA 怎麼辦，好險世界上一堆Server的公鑰是不可數的，但 CA 是可數的，所以我們可以預先安裝到瀏覽器或 OS
+
+一個 Digital Signature 包含以下訊息:
+1. Version
+2. Serial Number
+3. Signature Algorithm ID
+4. Certificate Signature
+5. Issuer Name
+6. Validity Period
+7. Subject
+8. Public-Key
+
+Mac Certificate path: `/System/Library/Security/Certificates.bundle/Contents/Resources/TrustStore.html`
+
+
+補充: [數位簽章演算法](https://lh5.googleusercontent.com/_JiU4f3pMlOg/TY882fPEFpI/AAAAAAAAAQA/80juTCnWJMs/%E6%95%B8%E4%BD%8D%E7%B0%BD%E7%AB%A0.png)
+
+### 傳輸安全層
+在计算机科学里，隔离复杂性的最有效手段（没有之一）就是分层，如果一层不够就再加一层。
+主流版本為TLS1.2
+以TLS 1.2 為例，介紹傳輸安全層是如何
+* 保障所有信息都是第三方無法竊聽(加密傳輸)
+* 無法篡改(一旦篡改通信算法會立刻發現)
+* 無法冒充(證書驗證身分)
+
+![圖 5-17](./ch5/5-17.png)
