@@ -522,3 +522,90 @@ if (someParam == null) {
 }
 ```
 
+对于无业务含义的格式验证，可以做到预置。
+对于有业务含义的业务验证，可以做到重用
+
+```java
+/**
+* 创建新的用户
+*/
+@POST
+public Response createUser(@Valid @UniqueAccount Account user) {
+	return CommonResponse.op(() -> service.createAccount(user));
+}
+
+/**
+* 更新用户信息
+*/
+@PUT
+@CacheEvict(key = "#user.username")
+public Response updateUser(@Valid @AuthenticatedAccount @NotConflictAccount Account user) {
+	return CommonResponse.op(() -> service.updateAccount(user));
+}
+```
+* @UniqueAccount：传入的用户对象必须是唯一的，不与数据库中任何已有用户的名称、手机、邮箱产生重复。
+* @AuthenticatedAccount：传入的用户对象必须与当前登录的用户一致。
+* @NotConflictAccount：传入的用户对象中的信息与其他用户是无冲突的，譬如将一个注册用户的邮箱，修改成与另外一个已存在的注册用户一致的值，这便是冲突。
+
+
+```java
+public static class AuthenticatedAccountValidator extends AccountValidation<AuthenticatedAccount> {
+    public void initialize(AuthenticatedAccount constraintAnnotation) {
+        predicate = c -> {
+            AuthenticAccount loginUser = (AuthenticAccount) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+            return c.getId().equals(loginUser.getId());
+        };
+    }
+}
+
+public static class UniqueAccountValidator extends AccountValidation<UniqueAccount> {
+    public void initialize(UniqueAccount constraintAnnotation) {
+        predicate = c -> !repository.existsByUsernameOrEmailOrTelephone(c.getUsername(), c.getEmail(), c.getTelephone());
+    }
+}
+
+public static class NotConflictAccountValidator extends AccountValidation<NotConflictAccount> {
+    public void initialize(NotConflictAccount constraintAnnotation) {
+        predicate = c -> {
+            Collection<Account> collection = repository.findByUsernameOrEmailOrTelephone(c.getUsername(), c.getEmail(), c.getTelephone());
+            // 将用户名、邮件、电话改成与现有完全不重复的，或者只与自己重复的，就不算冲突
+            return collection.isEmpty() || (collection.size() == 1 && collection.iterator().next().getId().equals(c.getId()));
+        };
+    }
+}
+```
+
+```java
+/**
+ * 表示一个用户的信息是无冲突的
+ *
+ * “无冲突”是指该用户的敏感信息与其他用户不重合，譬如将一个注册用户的邮箱，修改成与另外一个已存在的注册用户一致的值，这便是冲突
+ **/
+@Documented
+@Retention(RUNTIME)
+@Target({FIELD, METHOD, PARAMETER, TYPE})
+@Constraint(validatedBy = AccountValidation.NotConflictAccountValidator.class)
+public @interface NotConflictAccount {
+    String message() default "用户名称、邮箱、手机号码与现存用户产生重复";
+    Class<?>[] groups() default {};
+    Class<? extends Payload>[] payload() default {};
+}
+```
+将不带业务含义的格式校验注解放到 Bean 的类定义之上，将带业务逻辑的校验放到 Bean 的类定义的外面。这两者的区别是放在类定义中的注解能够自动运行，而放到类外面则需要像前面代码那样，明确标出注解时才会运行。譬如用户账号实体中的部分代码为：
+```java
+public class Account extends BaseEntity {
+	@NotEmpty(message = "用户不允许为空")
+    private String username;
+
+    @NotEmpty(message = "用户姓名不允许为空")
+    private String name;
+
+    private String avatar;
+
+    @Pattern(regexp = "1\\d{10}", message = "手机号格式不正确")
+    private String telephone;
+
+    @Email(message = "邮箱格式不正确")
+    private String email;
+}
+```
