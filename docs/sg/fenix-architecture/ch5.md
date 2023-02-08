@@ -488,7 +488,50 @@ Mac Certificate path: `/System/Library/Security/Certificates.bundle/Contents/Res
 * 無法篡改(一旦篡改通信算法會立刻發現)
 * 無法冒充(證書驗證身分)
 
+[What happens during a TLS handshake?](https://www.cloudflare.com/learning/ssl/what-happens-in-a-tls-handshake/)
+
+During the course of a TLS handshake, the client and server together will do the following:
+
+Specify which version of TLS (TLS 1.0, 1.2, 1.3, etc.) they will use
+Decide on which cipher suites (see below) they will use
+Authenticate the identity of the server via the server’s public key and the SSL certificate authority’s digital signature
+Generate session keys in order to use symmetric encryption after the handshake is complete
+
 ![圖 5-17](./ch5/5-17.png)
+
+1. 客户端请求：Client Hello
+客户端向服务器请求进行加密通信，在这个请求里面，它会以明文的形式，向服务端提供以下信息。
+
+* 支持的协议版本，譬如 TLS 1.2
+* 一个客户端生成的 32 Bytes 随机数，这个随机数将稍后用于产生加密的密钥。
+* 一个可选的 SessionID，这个 SessionID 是指传输安全层的 Session，是为了 TLS 的连接复用而设计的。
+* 一系列支持的密码学算法套件，例如TLS_RSA_WITH_AES_128_GCM_SHA256，代表着密钥交换算法是 RSA，加密算法是 AES128-GCM，消息认证码算法是 SHA256
+* 一系列支持的数据压缩算法。
+
+2. 服务器回应：Server Hello
+服务器接收到客户端的通信请求后，如果客户端声明支持的协议版本和加密算法组合与服务端相匹配的话，就向客户端发出回应。如果不匹配，将会返回一个握手失败的警告提示。这次回应同样以明文发送的，包括以下信息：
+
+* 服务端确认使用的 TLS 协议版本。
+* 第二个 32 Bytes 的随机数，稍后用于产生加密的密钥。
+* 一个 SessionID，以后可通过连接复用减少一轮握手。
+* 服务端在列表中选定的密码学算法套件。
+* 服务端在列表中选定的数据压缩方法。
+* 根據不同的加密算法，會有不同的key交換方式
+
+3. 客户端确认：Client Handshake Finished
+由于密码学套件的组合复杂多样，这里仅以 RSA 算法为密钥交换算法为例介绍后续过程。
+客户端收到服务器应答后，先要验证服务器的证书合法性。如果证书不是可信机构颁布的，或者证书中信息存在问题，譬如域名与实际域名不一致、或者证书已经过期、或通过在线证书状态协议得知证书已被吊销，等等，都会向访问者显示一个“证书不可信任”的警告，由用户自行选择是否还要继续通信。如果证书没有问题，客户端就会从证书中取出服务器的公钥，并向服务器发送以下信息：
+
+* 客户端证书（可选）
+* 第三个 32 Bytes 的随机数，这个随机数不再是明文发送，而是以服务端传过来的公钥加密的，它被称为 PreMasterSecret，将与前两次发送的随机数一起，根据特定算法计算出 48 Bytes 的 MasterSecret ，这个 MasterSecret 即为后续内容传输时的对称加密算法所采用的私钥。
+* 编码改变通知，表示随后的信息都将用双方商定的加密方法和密钥发送。
+* 客户端握手结束通知，表示客户端的握手阶段已经结束。这一项同时也是前面发送的所有内容的哈希值，以供服务器校验。
+
+4. 服务端确认：Server Handshake Finished
+服务端向客户端回应最后的确认通知，包括以下信息。
+
+编码改变通知，表示随后的信息都将用双方商定的加密方法和密钥发送。
+服务器握手结束通知，表示服务器的握手阶段已经结束。这一项同时也是前面发送的所有内容的哈希值，以供客户端校验。
 
 ## 5.6 驗證 (Verification)
 * 你是誰 (Authentication)
