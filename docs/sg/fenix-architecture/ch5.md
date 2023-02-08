@@ -352,7 +352,7 @@ _圖 5-14 HMAC 哈希與普通哈希算法的差別_
 
 :::
 
-## 保密（Confidentiality）
+## 5.4 保密（Confidentiality）
 
 :::info
 系統如何保證敏感數據無法被包括系統管理員在內的內外部人員所竊取、濫用？
@@ -380,7 +380,7 @@ _圖 5-14 HMAC 哈希與普通哈希算法的差別_
 
 ---
 
-## 5.5 傳輸（Transport Security）
+## 5.5 傳輸Transport Security
 
 :::info
 系统如何保证通过网络传输的信息无法被第三方窃听、篡改和冒充？
@@ -391,7 +391,7 @@ _圖 5-14 HMAC 哈希與普通哈希算法的差別_
 為什麼簽名就能讓payload中的訊息變得不可篡改跟不可抵賴呢?
 解釋數位簽章(Digital Signature)之前，必須先解釋"摘要"跟"加密"
 
-#### 摘要 (Digital Digest)
+#### 摘要 Digital Digest
 ```java
 signature = SHA256(base64UrlEncode(header) + "." + base64UrlEncode(payload) , secret)
 ```
@@ -412,6 +412,7 @@ Hash特性:
    * [Announcing the first SHA1 collision](https://security.googleblog.com/2017/02/announcing-first-sha1-collision.html)
 
 Q: Hash 為什麼會產生碰撞 (collisions)?
+
 A: (鴿籠原理)
 
 加密與摘要本質區別在加密是可逆的，逆過程就是解密。以前加密需要保護演算法，現代密碼學加解密算法都完全公開。
@@ -422,16 +423,17 @@ A: (鴿籠原理)
 如何對大數進行質因數分解，至今沒有找到多項式時間的算法。
 
 根據加密或解密是否採用同一個密鑰，來決定密碼學算法是對稱式加密還是非對稱式加密。
+
 對稱式加密缺點: 通信成員變多，彼此都用獨立的密鑰，數量就會與成員數量成正比。
 而更困難的問題是，當通信管道不安全時，如何才能確保拿到正確的鑰匙。
 如果假設通道是安全的，為什麼不用這個通道傳訊息就好了
 ![圖 5-15 雞生蛋，蛋生雞](./ch5/5-15_chicken_egg.png)
 
-補充: RSA為什麼公鑰私鑰都可以加解密 [Understanding public/private RSA keys](https://dev.to/dandyvica/understanding-public-private-rsa-keys-3j81)
-
 解法就是，非對稱式加密!，非對稱式加密算法根據使用方法不同，可以提供兩種功能
 * 公鑰加密，私鑰解密: 這種就是加密，大家都可以用公鑰加密，但只有擁有私鑰的人能解開
 * 私鑰加密，公鑰解密: 這種就是簽章，只有擁有私鑰的人能產生加密過後的文件，大家都有公鑰可以解開內容確認是某人寫的文件
+
+補充: RSA為什麼公鑰私鑰都可以加解密 [Understanding public/private RSA keys](https://dev.to/dandyvica/understanding-public-private-rsa-keys-3j81)
 
 但是非對稱式的計算效率比對稱式加密差上好幾個量級。而且現行的非對稱式加密不支援分組加密(只能加密不超過密鑰長度的資料)。
 
@@ -450,6 +452,8 @@ A: (鴿籠原理)
   * 通關密語, 共同小秘密
 * 基於權威公證人的信任
   * Tom過來跟我說，他是 VicOne 的人，我很懷疑，但我信任 Mech，Mech 擔保他確實是 VicOne 的人，那 Tom 很有可能是 VicOne 的人
+
+現實世界不能假設授權伺服器和資源伺服器是互相認識的，所以不會採用第一種方法。
 
 :::info
 ## 公開金鑰基礎建設
@@ -476,7 +480,7 @@ Mac Certificate path: `/System/Library/Security/Certificates.bundle/Contents/Res
 
 補充: [數位簽章演算法](https://lh5.googleusercontent.com/_JiU4f3pMlOg/TY882fPEFpI/AAAAAAAAAQA/80juTCnWJMs/%E6%95%B8%E4%BD%8D%E7%B0%BD%E7%AB%A0.png)
 
-### 傳輸安全層
+### 傳輸安全層 Transport Layer Security (TLS)
 在计算机科学里，隔离复杂性的最有效手段（没有之一）就是分层，如果一层不够就再加一层。
 主流版本為TLS1.2
 以TLS 1.2 為例，介紹傳輸安全層是如何
@@ -485,3 +489,36 @@ Mac Certificate path: `/System/Library/Security/Certificates.bundle/Contents/Res
 * 無法冒充(證書驗證身分)
 
 ![圖 5-17](./ch5/5-17.png)
+
+## 5.6 驗證 (Verification)
+* 你是誰 (Authentication)
+* 你能做什麼 (Authorization)
+* 你做的對不對 (Verification)
+
+```
+前  端： 提交一份用户数据（姓名:某, 性别:男, 爱好:女, 签名:xxx, 手机:xxx, 邮箱:null）
+控制器： 发现邮箱是空的，抛ValidationException("邮箱没填")
+前  端： 已修改，重新提交
+安  全： 发送验证码时发现手机号少一位，抛RemoteInvokeException("无法发送验证码")
+前  端： 已修改，重新提交
+服务层： 邮箱怎么有重复啊，抛BusinessRuntimeException("不允许开小号")
+前  端： 已修改，重新提交
+持久层： 签名字段超长了插不进去，抛SQLException("插入数据库失败，SQL：xxx")
+…… ……
+前  端： 你们这些坑管挖不管埋的后端，各种异常都往前抛！
+用  户： 这系统牙膏厂生产的？
+```
+
+* 在 Controller 层做，在 Service 层不做。理由是从 Service 开始会有同级重用，出现 ServiceA.foo(params)调用 ServiceB.bar(params)时，就会对 params 重复校验了两次。
+* 在 Service 层做，在 Controller 层不做。理由是无业务含义的格式校验已在前端表单验证处理过，有业务含义的校验，放在 Controller 层无论如何不合适。
+* 在 Controller、Service 层各做各的。Controller 做格式校验，Service 层做业务校验，听起来很合理，但这其实就是上面段子中被嘲笑的行为。
+* 还有其他一些意见，譬如还有提在持久层做校验，理由是这是最终入口，把守好写入数据库的质量最重要。
+
+避免对输入数据的防御污染到业务代码，如果你的代码里面如果很多下面这样的条件判断，就应该考虑重构了：
+```java
+// 一些已执行的逻辑
+if (someParam == null) {
+	throw new RuntimeExcetpion("客官不可以！")
+}
+```
+
