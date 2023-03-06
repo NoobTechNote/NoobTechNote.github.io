@@ -147,4 +147,69 @@ Software Supply Chain; SSC
 
 ## 服務安全
 
-(TODO)
+* TLS (Transport Layer Security)
+   * mTLS (Mutual TLS)
+* PKI (Public Key Infrastructure)
+   * CA (Certificate Authority)
+* OAuth
+* RBAC
+* JWT
+
+### 建立信任
+
+#### 單向TLS
+
+```mermaid
+sequenceDiagram
+
+participant c as Client
+participant s as Server
+
+c -->> s: Client Hello
+s -->> c: Server Cert + Server PUBK + Server Random
+c ->> c: Use CA PUBK to verify Server Cert
+c ->> c: Generate Client Random
+c ->> c: Use Server PUBK to encrypt Client Random (Premaster Secret PMS)
+c ->> s: PMS
+s ->> s: Use Server PK to decrypt PMS
+c ->> c: Master Secret = Server Random + Client Random + PMS
+s ->> s: Master Secret = Server Random + Client Random + PMS
+
+c ->> s: (Use Master Secret to exchange content)
+s ->> c: (Use Master Secret to exchange content)
+```
+
+#### 雙向TLS (mTLS)
+
+```mermaid
+sequenceDiagram
+
+participant c as Client
+participant s as Server
+
+c -->> s: Client Hello
+rect rgb(200, 150, 255)
+s -->> c: Server Cert + Server PUBK + Server Random and request Client Cert
+end
+c ->> c: Use CA PUBK to verify Server Cert
+rect rgb(200, 150, 255)
+c ->> s: Send Client Cert + Client PUBK
+s ->> s: Verify Client Cert
+end
+c ->> c: Generate Client Random
+c ->> c: Use Server PUBK to encrypt Client Random (Premaster Secret PMS)
+c ->> s: PMS
+s ->> s: Use Server PK to decrypt PMS
+c ->> c: Master Secret = Server Random + Client Random + PMS
+s ->> s: Master Secret = Server Random + Client Random + PMS
+
+c ->> s: (Use Master Secret to exchange content)
+s ->> c: (Use Master Secret to exchange content)
+```
+
+
+### 認證 (Authentication; AuthN)
+
+### 授權 (Authorization; AuthZ)
+
+
