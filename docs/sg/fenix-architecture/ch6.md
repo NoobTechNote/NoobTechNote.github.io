@@ -62,6 +62,8 @@ Recap:
 * https://www.youtube.com/watch?v=BhosKsE8up8&t=4545s&ab_channel=BitTiger%E5%AE%98%E6%96%B9%E9%A2%91%E9%81%93BitTigerOfficialChannel
 * https://www.youtube.com/watch?v=d7nAGI_NZPk&ab_channel=GoogleTechTalks
 
+
+![consensus-vs-2pc](ch6/6-3-compare-consensus-2pc.png)
 發明者 Leslie Lamport (LaTeX 的 La)，Paxos 幾乎就是 Consensus 的代名詞，
 ### 算法流程
 * 提案節點：稱為 Proposer，提出對某個值進行設置操作的節點，設置值這個行為就被稱之為提案（Proposal），值一旦設置成功，就是不會丟失也不可變的。，應該類比成日誌記錄操作，在後面介紹的 Raft 算法中就直接把「提案」叫作「日誌」了。
@@ -94,13 +96,24 @@ Multi Paxos 對 Basic Paxos 的核心改進是增加了「選主」的過程，�
 
 思考「分布式系統中如何對某個值達成一致」這個問題，可以把該問題劃分做三個子問題來考慮，可以證明（具體證明就不列在這裏了，感興趣的讀者可參考結尾給出的論文）當以下三個問題同時被解決時，即等價於達成共識：
 
-如何選主（Leader Election）。
-如何把數據復製到各個節點上（Entity Replication）。
-如何保證過程是安全的（Safety）。
+* 如何選主（Leader Election）。
+* 如何把數據復製到各個節點上（Entity Replication）。
+* 如何保證過程是安全的（Safety）。
 
-選主：用 Paxos 兩階段完成；初始化耗時+；
-同步數據：統一由主節點發起，用 Paxos 的 accept 階段完成；性能+；
-日誌復製到各節點的過程，類似 2PC；只是 Raft 可以重新選主（解決單點問題），且只需要超過半數節點確認即可；「周誌明：通過隨機超時來實現無活鎖的選主過程，通過主節點來發起寫操作，通過心跳來檢測存活性，通過Quorum機製來保證一致性」。
+* 選主：用 Paxos
+* 數據複製：
+  * heartbeat
+  * 例子：網路分區
+* 安全
+    * 協定性（Safety）：所有的壞事都不會發生（something "bad" will never happen）。
+      * 保證了選主的結果一定是有且只有唯一的一個主節點，不可能同時出現兩個主節點
+    * 終止性（Liveness）：所有的好事都終將發生，但不知道是啥時候（something "good" will must happen, but we don't know when）。
+      * 保證選主過程是一定可以在某個時刻能夠結束的。
+
+以上述三個問題來思考共識算法，即為Raft算法
+Raft: https://web.stanford.edu/~ouster/cgi-bin/papers/raft-atc14
+http://thesecretlivesofdata.com/
+後來更成為 Etcd、LogCabin、Consul 等重要分布式程序的實現基礎，ZooKeeper 的 ZAB 算法與 Raft 的思路也非常類似，這些算法都被認為是 Multi Paxos 的等價派生實現。
 
 ## 6.3 Gossip 協議
 Paxos、Raft、ZAB 等分布式算法經常會被稱作是「強一致性」的分布式共識協議，其實在說「盡管系統內部節點可以存在不一致的狀態，但從系統外部看來，不一致的情況並不會被觀察到，所以整體上看系統是強一致性的」。
