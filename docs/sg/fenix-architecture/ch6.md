@@ -112,7 +112,9 @@ Multi Paxos 對 Basic Paxos 的核心改進是增加了「選主」的過程，�
 
 以上述三個問題來思考共識算法，即為Raft算法
 Raft: https://web.stanford.edu/~ouster/cgi-bin/papers/raft-atc14
+
 http://thesecretlivesofdata.com/
+
 後來更成為 Etcd、LogCabin、Consul 等重要分布式程序的實現基礎，ZooKeeper 的 ZAB 算法與 Raft 的思路也非常類似，這些算法都被認為是 Multi Paxos 的等價派生實現。
 
 ## 6.3 Gossip 協議
