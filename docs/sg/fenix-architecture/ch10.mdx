@@ -12,7 +12,7 @@ import TabItem from "@theme/TabItem";
 > ![issue-img](./ch10/10-1.png)
 
 > 前言：某專案後端用 AWS Lambda + python , client 端用 iOS , Android。
-> 常常 JSON payload 傳錯導致 crash 或 API response 都好幾秒，News List 頁面等 6 秒
+> 常常 JSON payload 傳錯導致 crash 或 API response 都好幾秒，News List 頁面要等 6 秒，
 > 總不可能每天手動滑 APP 做 test，看 GA 分析 user 滯留時間出奇的低!!!
 > 前端當作除錯工具，我在想有更好的方式解決?
 >
@@ -36,14 +36,14 @@ API 可觀察性是指通過 API 發出的信號可以理解 API 內部狀態的
 
 #### 使用 API 可觀察性技術將使您能夠從整個系統中獲取數據，這與黑盒監控不同。
 
-例如，當發生錯誤時，可以提供比簡單的 API 響應快照更多的信息。這意味著使用 API 可觀察性工具，您的工程師將能夠更快地解決問題。
+例如，當發生錯誤時，可以提供比簡單的 API 響應快照更多的資訊。這意味著使用 API 可觀察性工具，您的工程師將能夠更快地解決問題。
 
 ![API-observability](./ch10/API-observability.png)
 
 </p>
 </details>
 
-### 可觀測性 (Observability)
+### 可觀測性 (Observability) 三大支柱
 
 - 日誌(Logging)
 - 追踪(Tracing)
@@ -54,27 +54,36 @@ API 可觀察性是指通過 API 發出的信號可以理解 API 內部狀態的
 日誌是在任何服務器、操作系統或應用程序中觀察到的活動的記錄。
 
 通常，日誌文件包含與在服務器中觀察到的小活動相關的
-所有詳細信息。它們可以是結構化或非結構化的代碼行，其中包含您要查找的所有詳細信息。
+所有詳細資訊。它們可以是結構化或非結構化的代碼行，其中包含您要查找的所有詳細資訊。
 
 日誌記錄是記錄您的操作的過程。它不需要任何人工協助，因為該過程是自動且自發的。
 
 首選日誌來觀察系統的原因是，
 
 - 所有系統都有日誌，過程不需要任何手動操作。
-- 如果出現錯誤，日誌將包含與問題相關的故障的所有詳細信息。
+- 如果出現錯誤，日誌將包含與問題相關的故障的所有詳細資訊。
 - 要對系統進行故障排除或調試，檢查記錄的日誌文件就足夠了。
 
 日誌可觀察性也有一個必須注意的限制，
 
 - 如果不注意日誌文件，可能會導致記錄失敗，並且無法正確保存收集的數據。
 
+<details><summary>Logs-vs-traces</summary>
+<p>
+
+![Logs-vs-traces-red](./ch10/Logs-vs-traces-red@2x-2.webp)
+[Ref](https://www.aspecto.io/blog/logging-vs-tracing-why-logs-arent-enough-to-debug-your-microservices/)
+
+</p>
+</details>
+
 ### 追踪 (Tracing)
 
-一種完全不同的數據以軌蹟的形式存儲。
+一種完全不同的數據以軌跡的形式存儲。
 
-痕跡是一種流動形式，通過它可以很容易地看到和分析活動背後的整個歷史。
+Tracing 是一種流動形式，通過它可以很容易地看到和分析活動背後的整個歷史。
 
-由於可以記錄系統的整個框架，因此跟踪被廣泛用於確定可觀察性。通過痕蹟的具體點，您可以識別並糾正錯誤。
+由於可以記錄系統的整個框架，因此追踪被廣泛用於確定可觀察性。通過 Tracing 的具體點，您可以識別並糾正錯誤。
 
 優點:
 
@@ -83,7 +92,7 @@ API 可觀察性是指通過 API 發出的信號可以理解 API 內部狀態的
 
 缺點:
 
-- 跟踪有時可能會有間隙，這會使調試和故障排除變得更加困難。
+- Tracing 有時可能會有間隙，這會使調試和故障排除變得更加困難。
 
 ### 指標 (Metrics)
 
@@ -91,9 +100,9 @@ API 可觀察性是指通過 API 發出的信號可以理解 API 內部狀態的
 
 指標是一種數字數據形式，以離散值的形式存儲，有助於快速識別問題。
 
-一般來說，給出規律時間間隔行為信息的是數學數據。數據可以以圖表的形式標註，便於追踪系統的高點和低點。
+一般來說，給出規律時間間隔行為資訊的是數學數據。數據可以以圖表的形式標註，便於追踪系統的高點和低點。
 
-指標的使用一般用於業務和統計相關信息，以追踪頻率。
+指標的使用一般用於業務和統計相關資訊，以追踪頻率。
 
 優點:
 
@@ -112,10 +121,10 @@ API 可觀察性是指通過 API 發出的信號可以理解 API 內部狀態的
 ## 事件日志
 
 日誌用來記錄系統運行期間發生過的離散事件。
-print log 很簡單，在分散式系統，就很難只依靠 tail、grep、awk 來從日誌中挖掘信息了，
+print log 很簡單，在分散式系統，就很難只依靠 tail、grep、awk 來從日誌中挖掘資訊了，
 往往還要有專門的全局查詢和可視化功能。此時，從打印日誌到分析查詢之間，
 還隔著收集、緩衝、聚合、加工、索引、存儲等若干個步驟。
-Elastic Stack 技術棧
+Elastic Stack 技術棧來說
 
 > ![LoggingProcessing](./ch10/10-3.jpg)
 
@@ -123,28 +132,29 @@ Elastic Stack 技術棧
 
 #### 不應該有的資訊：
 
-- 避免打印敏感信息:
+- 避免打印敏感資訊:
 
-不該將密碼，銀行賬號，身份證件這些敏感信息打到日誌裡
+不該將密碼，銀行賬號，身份證件這些敏感資訊打到日誌裡。個資外洩！！！
 
 - 避免引用慢操作:
 
-日誌中打印的信息應該是上下文中可以直接取到的，如果當前上下文中根本沒有這項數據，
-需要專門調用遠程服務或者從數據庫獲取，又或者通過大量計算才能取到的話，那應該先考慮這項信息放到日誌中是不是必要且恰當的。
+日誌中打印的資訊應該是上下文中可以直接取到的，如果當前上下文中根本沒有這項數據，
+需要專門調用遠程服務或者從數據庫獲取，又或者通過大量計算才能取到的話，那應該先考慮這項資訊放到日誌中是不是必要且恰當的。
 
-- 避免打印追踪診斷信息:
+- 避免打印追踪診斷資訊:
 
-日誌中不要打印方法輸入參數、輸出結果、方法執行時長之類的調試信息。
+日誌中不要打印方法輸入參數、輸出結果、方法執行時長之類的調試資訊。
 
 - 避免誤導他人:
 
-[JAVA 中不要用 e.printStackTrace()](https://blog.51cto.com/u_15127511/3436116)，e.printStackTrace() 語句要產生的字符串記錄的是堆棧信息，太長太多，內存被填滿了！
+[JAVA 中不要用 e.printStackTrace()](https://blog.51cto.com/u_15127511/3436116)，e.printStackTrace() 語句要產生的字符串記錄的是堆棧資訊，太長太多，memory 被填滿了！
 
 #### 應該有的資訊：
 
 - 處理請求時的 TraceID。
 - 系統運行過程中的關鍵事件。
-- 啟動時輸出配置信息。
+- 啟動時輸出系統資訊。
+  ![System-Information](./ch10/10-12.jpg)
 
 ### 收集與緩衝
 
@@ -168,7 +178,7 @@ Beats 是用 Go 編寫的輕量級數據傳輸器，你可以把它安裝在你�
 ### 加工與聚合
 
 將日誌集中收集之後，存入 Elasticsearch 之前，一般還要對它們進行加工轉換和聚合處理。
-這是因為日誌是非結構化數據，一行日誌中通常會包含多項信息，如果不做處理，
+這是因為日誌是非結構化數據，一行日誌中通常會包含多項資訊，如果不做處理，
 那在 Elasticsearch 就只能以全文檢索的原始方式去使用日誌，既不利於統計對比，也不利於條件過濾。
 舉個具體例子，下面是一行 Nginx 服務器的 Access Log，代表了一次頁面訪問操作：
 
@@ -176,18 +186,18 @@ Beats 是用 Go 編寫的輕量級數據傳輸器，你可以把它安裝在你�
 14.123.255.234 - - [19/Feb/2020:00:12:11 +0800] "GET /index.html HTTP/1.1" 200 1314 "https://icyfenix.cn" "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.163 Safari/537.36"
 ```
 
-| 數據項   | 值                                                                                                             |
-| -------- | -------------------------------------------------------------------------------------------------------------- |
-| 知識產權 | 14.123.255.234                                                                                                 |
-| 用戶名   | 無效的                                                                                                         |
-| 約會時間 | 19/二月/2020:00:12:11 +0800                                                                                    |
-| 方法     | 得到                                                                                                           |
-| 網址     | /index.html                                                                                                    |
-| 協議     | HTTP/1.1                                                                                                       |
-| 地位     | 200                                                                                                            |
-| 尺寸     | 1314                                                                                                           |
-| 參考     | https://icyfenix.cn                                                                                            |
-| 代理人   | Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.163 Safari/537.36 |
+| 數據項                                                                | 值                                                                                                             |
+| --------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| IP 地址                                                               | 14.123.255.234                                                                                                 |
+| 用戶名 - -                                                            | 無效的                                                                                                         |
+| 請求的時間戳                                                          | 19/二月/2020:00:12:11 +0800                                                                                    |
+| 請求的方法                                                            | 得到                                                                                                           |
+| 請求的 URL                                                            | /index.html                                                                                                    |
+| HTTP 協議的版本號                                                     | HTTP/1.1                                                                                                       |
+| HTTP Status Code                                                      | 200                                                                                                            |
+| 伺服器回應的內容長度，1314 個位元組                                   | 1314                                                                                                           |
+| 請求的來源網址                                                        | https://www.cncf.io/                                                                                           |
+| 發送請求的用戶端瀏覽器的 User-Agent，這裡表示使用的是 Chrome 瀏覽器。 | Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.163 Safari/537.36 |
 
 通過[Grok 表達式語法](https://doc.yonyoucloud.com/doc/logstash-best-practice-cn/filter/grok.html)轉換為上面表格那樣的結構化數據
 
@@ -200,10 +210,10 @@ Beats 是用 Go 編寫的輕量級數據傳輸器，你可以把它安裝在你�
   [Kibana](https://www.elastic.co/cn/kibana/)
   ![kibana-dashboard.jpeg](./ch10/kibana-dashboard.jpeg)
 
-## 鏈路追踪
+## 鏈路追踪(TracingAnalysis)
 
 分佈式追踪系統的起源
-[《Dapper：a Large-Scale Distributed Systems Tracing Infrastructure》](https://static.googleusercontent.com/media/research.google.com/zh-CN//archive/papers/dapper-2010-1.pdf)。
+[《Dapper：a Large-Scale Distributed Systems Tracing Infrastructure》](https://static.googleusercontent.com/media/research.google.com/zh-CN//archive/papers/dapper-2010-1.pdf)論文。
 
 一個完整的分散式追踪系統由數據收集、數據存儲和數據展示三個相對獨立的子系統組成，
 而鏈路追踪僅指數據收集部分。追踪系統常被稱為“APM 系統”（Application Performance Management）。
@@ -221,7 +231,7 @@ Beats 是用 Go 編寫的輕量級數據傳輸器，你可以把它安裝在你�
 #### 跨度(Span)
 
 由於每次 Trace 都可能會調用數量不定、坐標不定的多個服務，為了能夠記錄具體調用了哪些服務，以及調用的順序、
-開始時點、執行時長等信息，每次開始調用服務前都要先埋入一個調用記錄，這個記錄稱為一個"跨度"(Span)。
+開始時點、執行時長等資訊，每次開始調用服務前都要先埋入一個調用記錄，這個記錄稱為一個"跨度"(Span)。
 
 #### 適用場景
 
@@ -230,15 +240,17 @@ Beats 是用 Go 編寫的輕量級數據傳輸器，你可以把它安裝在你�
 - 隨應用擴縮：現代的分佈式服務集群都有根據流量壓力自動擴縮的能力，這要求當業務系統擴縮時，追踪系統也能自動跟隨，不需要運維人員人工參與。
 - 持續的監控：要求追踪系統必須能夠 7x24 小時工作，否則就難以定位到系統偶爾抖動的行為。
 
+[原來 10 張圖就可以搞懂分佈式鏈路追踪系統原理](https://mp.weixin.qq.com/s/cqgGHFdKdDrGj_cpW_uBPQ#at)
+
 ### 數據收集
 
 #### 基於日誌的追踪(Log-Based Tracing)
 
-- 基於日誌的追踪的思路是將 Trace、Span 等信息直接輸出到應用日誌中，然後隨著所有節點的日誌歸集過程匯聚到一起，
-  再從全局日誌信息中反推出完整的調用鏈拓撲關係。
+- 基於日誌的追踪的思路是將 Trace、Span 等資訊直接輸出到應用日誌中，然後隨著所有節點的日誌歸集過程匯聚到一起，
+  再從全局日誌資訊中反推出完整的調用鏈拓撲關係。
 
   日誌追踪的代表產品是 Spring Cloud Sleuth，下面是一段由 Sleuth 在調用時自動生成的日誌記錄，
-  可以從中觀察到 TraceID、SpanID、父 SpanID 等追踪信息。
+  可以從中觀察到 TraceID、SpanID、父 SpanID 等追踪資訊。
 
 ```
 # 以下为调用端的日志输出：
@@ -260,18 +272,22 @@ Adding a class tag with value [ProductController] to a span [Trace: cbe97e67ce16
 
 - 服務追踪的實現思路是通過某些手段給目標應用注入追踪探針(Probe)
 
-[Pinpoint](https://pinpoint-apm.github.io/pinpoint/index.html)
+[jaeger](https://www.jaegertracing.io/)
 
 - 應用程序拓撲圖
 - 實時監控您的應用程序
 - 獲得對每筆交易的代碼級可見性
 
-> ![Pinpoint](./ch10/10-6.png)
+#### Jaeger Tracing Architecture
+
+> ![Jaeger Tracing Architecture](./ch10/10-14.jpeg)
+
+> ![jaeger](./ch10/10-13.png)
 
 #### 基於邊車代理的追踪(Sidecar-Based Tracing)
 
 - 服務網格
-  Envoy 是專為大型現代 SOA（面向服務架構）架構設計的 L7 代理和通信總線，體積小，性能高。它的誕生源於以下理念：
+  Envoy 是專為大型現代 SOA（Service-oriented Architecture 服務導向架構）架構設計的 L7 代理和[序列通訊](https://zh.wikipedia.org/zh-tw/%E4%B8%B2%E8%A1%8C%E9%80%9A%E4%BF%A1)，體積小，性能高。它的誕生源於以下理念：
   對於應用程序而言，網絡應該是透明的，當發生網絡和應用程序故障時，能夠很容易定位出問題的根源。
 
 - 非侵入的架構 : Envoy 是一個獨立進程，設計為伴隨每個應用程序服務運行。
@@ -282,21 +298,46 @@ Adding a class tag with value [ProductController] to a span [Trace: cbe97e67ce16
 
 > Ref: [envoy-handbook](https://icloudnative.io/envoy-handbook/docs/overview/overview/)
 
-### 追踪規範
+### 追踪規範。什麼是 OpenTelemetry？
+
+~~兩個規範搶話語權，最終握手和解產生 OpenTelemetry~~
+
+OpenTelemetry 是一組 API 和 SDK，允許我們收集和導出跟踪、日誌和指標（也稱為可觀察性的三大支柱）。
+
+它是一個 CNCF 社區驅動的開源項目（Cloud Native Computing Foundation，Kubernetes 的負責人）。
+
+OpenTelemetry 使我們能夠檢測我們的雲原生應用程序。檢測您的代碼意味著從您系統中發生的事件中收集遙測數據，這最終有助於我們了解軟件的性能和行為。
+
+OpenTelemetry 項目之所以獨一無二，主要有以下 3 個原因：
+
+- 它是開源的。
+- 收集日誌、指標和跟踪，並充當將它們聚集在一起的粘合劑。
+- 所有供應商都尊重的一種規範——標準的可觀察性框架。
+
+OpenTelemetry 用作標準的可觀察性框架，可在單一規範下捕獲所有遙測數據。
+
+它提供了幾個組件，包括：
+
+- 用於生成遙測的每種編程語言的 API 和 SDK
+- OpenTelemetry 收集器；接收、處理遙測數據並將其導出到不同的目的地。
+- 用於傳輸遙測數據的[OTLP](https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/protocol/otlp.md)協議
 
 [OpenTelemetry](https://opentelemetry.io/)
+
 [OpenTelemetry Collector](https://github.com/open-telemetry/opentelemetry-collector)
 
-<details>
-  <summary>結論</summary>
-
-某專案我開始動手做 Envoy + OpenTelemetry
+[What is OpenTelemetry? A Straightforward Guide](https://www.aspecto.io/blog/what-is-opentelemetry-the-infinitive-guide/?utm_source=jaeger-medium&utm_medium=post&utm_campaign=jaeger-tracing-the-ultimate-guide)
 
 > ![envoy-OpenTelemetry](./ch10/10-8.webp)
 
 Ref:[Announcing Alpha OpenTelemetry
 access logging support in
 Envoy](https://blog.envoyproxy.io/envoy-support-for-opentelemetry-access-logging-e4b08160d32c)
+
+<details>
+  <summary>這週 Scrum</summary>
+
+iOS 專案我開始動手做 OpenTelemetry + Jaeger
 
 </details>
 
@@ -331,6 +372,8 @@ Envoy](https://blog.envoyproxy.io/envoy-support-for-opentelemetry-access-logging
   Pull 是指度量系統主動從目標系統中拉取指標
   [why do you pull rather than push?](https://prometheus.io/docs/introduction/faq/#why-do-you-pull-rather-than-push?)
 
+> ![prometheus-stake](./ch10/prometheus-stake.jpeg)
+
 #### 存儲查詢
 
 ```
@@ -353,7 +396,7 @@ Envoy](https://blog.envoyproxy.io/envoy-support-for-opentelemetry-access-logging
 
 Prometheus 配合[Grafana](https://grafana.com/)
 
-指標是數據的數字表示。它包括名稱、標籤、值、發生時間等值，並傳達有關應用程序組件的信息。
+指標是數據的數字表示。它包括名稱、標籤、值、發生時間等值，並傳達有關應用程序組件的資訊。
 
 它們代表被監視的系統或應用程序的特定方面。它們提供了一種衡量系統性能、健康狀況和行為的方法，可用於識別問題、觸發警報和衡量變更的影響。
 
@@ -370,3 +413,10 @@ Prometheus 配合[Grafana](https://grafana.com/)
 
 它帶有警報功能；每當某個指標超過閾值時，用[Webhook](https://zh.wikipedia.org/zh-tw/%E7%BD%91%E7%BB%9C%E9%92%A9%E5%AD%90)通知，
 管理員就會收到消息。這使他能夠在有針對性的問題上迅速採取行動。
+
+<details>
+  <summary>未來週 Scrum</summary>
+
+某後端專案我開始動手做 [Prometheus + Grafana](https://blog.techbridge.cc/2019/08/26/how-to-use-prometheus-grafana-in-flask-app/)
+
+</details>
