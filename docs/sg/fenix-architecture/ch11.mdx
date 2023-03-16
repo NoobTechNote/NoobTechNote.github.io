@@ -1,0 +1,156 @@
+---
+title: "Ch11: 虛擬化容器"
+tsidebar_label: "Ch11: 虛擬化容器"
+sidebar_position: 11
+---
+
+# 虛擬化容器
+
+:::tip
+
+- 讓軟件能夠在任何環境、任何物理機器上達到“一次編譯，到處運行”，這並不是一個簡單的目標
+- 一個計算機軟件要能夠正確運行，需要有以下三方面的兼容性來共同保障
+
+:::
+
+- **ISA 兼容**: 機器指令集兼容性
+- **ABI 兼容**: 系統或者依賴庫的二進制兼容性
+- **環境兼容**: 環境的兼容性
+
+### 虛擬化技術
+
+- 指令集虛擬化（ISA Level Virtualization）
+- 硬件抽象層虛擬化（Hardware Abstraction Level Virtualization）
+- 操作系統層虛擬化（OS Level Virtualization）
+- 運行庫虛擬化（Library Level Virtualization）
+- 語言層虛擬化（Programming Language Level Virtualization）
+
+## 容器的崛起
+
+### 隔離文件：chroot
+
+:::note
+
+- Version 7 UNIX 系統中提供的 `chroot` 命令
+- Linux Kernel 2.3.41 版內核引入了 `pivot_root`
+
+:::
+
+- 當某個進程經過 `chroot` 操作之後，它的根目錄就會被鎖定在命令參數所指定的位置，以後它或者它的子進程將不能再訪問和操作該目錄之外的其他文件。
+- `pivot_root` 技術來實現文件隔離，`pivot_root` 直接切換了根文件系統（rootfs），有效地避免了 `chroot` 命令可能出現的安全性漏洞
+
+### 隔離訪問：namespaces
+
+:::note
+
+- Linux Kernel 2.4.19 版內核引入了一種全新的隔離機制：Linux 名稱空間（Linux Namespaces）
+
+:::
+
+- 一種由內核直接提供的全局資源封裝，是內核針對進程設計的訪問隔離機制。
+
+#### Linux 名稱空間支持以下八種資源的隔離
+
+| 名稱空間 | 隔離內容                                                                                                                                             | 內核版本 |
+| -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
+| Mount    | 隔離文件系統，功能上大致可以類比 chroot                                                                                                              | 2.4.19   |
+| UTS      | 隔離主機的 Hostname、Domain names                                                                                                                    | 2.6.19   |
+| IPC      | 隔離進程間通信的渠道（詳見“遠程服務調用”中對 IPC 的介紹）                                                                                            | 2.6.19   |
+| PID      | 隔離進程編號，無法看到其他名稱空間中的 PID，意味著無法對其他進程產生影響                                                                             | 2.6.24   |
+| Network  | 隔離網絡資源，如網卡、網絡棧、IP 地址、端口，等等                                                                                                    | 2.6.29   |
+| User     | 隔離用戶和用戶組                                                                                                                                     | 3.8      |
+| Cgroup   | 隔離 cgroups 信息，進程有自己的 cgroups 的根目錄視圖（在/proc/self/cgroup 不會看到整個系統的信息）。cgroups 的話題很重要，稍後筆者會安排一整節來介紹 | 4.6      |
+| Time     | 隔離系統時間，2020 年 3 月最新的 5.6 內核開始支持進程獨立設置系統時間                                                                                | 5.6      |
+
+:::tip
+syslog 時至今日還沒被隔離，容器內可以看到容器外其他進程產生的內核 syslog
+:::
+
+### 隔離資源：cgroups
+
+> Control Groups，目前常用的簡寫為 `cgroups`
+
+- 與名稱空間(namespaces)一樣都是直接由內核提供的功能
+- 隔離或者說分配並限制某個進程組能夠使用的資源配額
+
+#### Linux 控制群組子系統
+
+| 控制組子系統 | 功能                                                                                       |
+| ------------ | ------------------------------------------------------------------------------------------ |
+| blkio        | 為塊設備（如磁盤，固態硬盤，USB 等等）設定 I/O 限額。                                      |
+| cpu          | 控制 cgroups 中進程的處理器佔用比率。                                                      |
+| cpuacct      | 自動生成 cgroups 中進程所使用的處理器時間的報告。                                          |
+| cpuset       | 為 cgroups 中的進程分配獨立的處理器（包括多路系統的處理器，多核系統的處理器核心）。        |
+| devices      | 設置 cgroups 中的進程訪問某個設備的權限（讀、寫、創建三種權限）。                          |
+| freezer      | 掛起或者恢復 cgroups 中的進程。                                                            |
+| memory       | 設定 cgroups 中進程使用內存的限制，並自動生成內存資源使用報告。                            |
+| net_cls      | 使用等級識別符標記網絡數據包，可允許 Linux 流量控製程序識別從具體 cgroups 中生成的數據包。 |
+| net_prio     | 用來設置網絡流量的優先級。                                                                 |
+| hugetlb      | 主要針對於 HugeTLB 系統進行限制。                                                          |
+| perf_event   | 允許 Perf 工具基於 cgroups 分組做性能監測。                                                |
+
+- 2008 年合併到 2.6.24 版的內核後正式對外發布，這一階段的 cgroups 被稱為“第一代 `cgroups`”
+- 2016 年 3 月發布的 Linux Kernel 4.5 中，搭載了由 Facebook 工程師（主要是 Tejun Heo）重新編寫的“第二代 `cgroups`”
+
+:::tip
+目前這兩個版本的 cgroups 在 Linux 內核代碼中是並存的，稍後介紹的 Docker 暫時僅支持第一代的 cgroups。
+:::
+
+### 封裝系統：LXC
+
+:::note
+為降低普通用戶綜合使用 `namespaces`、`cgroups` 這些低級特性的門檻，2008 年 Linux Kernel 2.6.24 內核剛剛開始提供 `cgroups` 的同一時間，就馬上發布了名為 Linux 容器（LinuX Containers，LXC）的系統級虛擬化功能。
+:::
+
+### 封裝應用：Docker
+
+:::note
+
+> Solomon Hykes，[Stackoverflow](https://stackoverflow.com/questions/17989306/what-does-docker-add-to-lxc-tools-the-userspace-lxc-tools/)，2013
+
+**為什麼要用 Docker 而不是 LXC？（Why would I use Docker over plain LXC？）**
+
+Docker 除了包裝來自 Linux 內核的特性之外，它的價值還在於：
+
+- **跨機器的綠色部署**: Docker 定義了一種將應用及其所有的環境依賴都打包到一起的格式，彷彿它原本就是綠色軟件一樣。LXC 並沒有提供這樣的能力，使用 LXC 部署的新機器很多細節都依賴人的介入，虛擬機的環境幾乎肯定會跟你原本部署程序的機器有所差別。
+- **以應用為中心的封裝**: Docker 封裝應用而非封裝機器的理念貫穿了它的設計、API、界面、文檔等多個方面。相比之下，LXC 將容器視為對系統的封裝，這局限了容器的發展。
+- **自動構建**: Docker 提供了開發人員從在容器中構建產品的全部支持，開發人員無需關注目標機器的具體配置，即可使用任意的構建工具鏈，在容器中自動構建出最終產品。
+- **多版本支持**: Docker 支持像 Git 一樣管理容器的連續版本，進行檢查版本間差異、提交或者回滾等操作。從歷史記錄中你可以查看到該容器是如何一步一步構建成的，並且只增量上傳或下載新版本中變更的部分。
+- **組件重用**: Docker 允許將任何現有容器作為基礎鏡像來使用，以此構建出更加專業的鏡像。
+- **共享**: Docker 擁有公共的鏡像倉庫，成千上萬的 Docker 用戶在上面上傳了自己的鏡像，同時也使用他人上傳的鏡像。
+- **工俱生態**: Docker 開放了一套可自動化和自行擴展的接口，在此之上，還有很多工具來擴展其功能，譬如容器編排、管理界面、持續集成等等。
+
+:::
+
+#### 開放容器交互標準
+
+- 運行時標準（runtime-spec）: 運行時標准定義了應該如何運行一個容器、如何管理容器的狀態和生命週期、如何使用操作系統的底層特性（namespaces、cgroup、pivot_root 等）
+- 容器鏡像標準（image-spec）: 容器鏡像標準規定了容器鏡像的格式、配置、元數據的格式，可以理解為對鏡像的靜態描述
+- 鏡像分發標準（distribution-spec，分發標準還未正式發布）: 鏡像分發標準則規定了鏡像推送和拉取的網絡交互過程。
+
+#### Docker、containerd 和 runC 的交互關係
+
+![Docker、containerd 和 runC 的交互關係](./ch11/11-2.png)
+
+### 封裝集群：Kubernetes
+
+#### Kubernetes 與容器引擎的調用關係
+
+![Kubernetes 與容器引擎的調用關係](./ch11/11-3.png)
+
+將這個階段 Kubernetes 與容器引擎的調用關係捋直，並結合上一節提到的 Docker 捐獻 containerd 與 runC 後重構的調用，完整的調用鏈條如下所示：
+
+> **Kubernetes Master → kubelet → DockerManager → Docker Engine → containerd → runC**
+
+Docker 對 Kubernetes 來說只是一項默認依賴，而非之前的無可或缺了，它們的調用鍊為：
+
+> **Kubernetes Master → kubelet → KubeGenericRuntimeManager → DockerShim → Docker Engine → containerd → runC**
+
+開源版 Kubernetes 是使用 CRI-O、cri-containerd 抑或是 DockerShim 作為 CRI 實現，完全可以由用戶自由選擇（根據用戶宿主機的環境選擇），但在 RedHat 自己擴展定制的 Kubernetes 企業版，即 OpenShift 4 中，調用鏈已經沒有了 Docker Engine 的身影：
+
+> **Kubernetes Master → kubelet → KubeGenericRuntimeManager → CRI-O→ runC**
+
+Kubernetes 從 1.10 版本宣布開始支持 containerd 1.1，在調用鏈中已經能夠完全抹去 Docker Engine 的存在：
+
+> **Kubernetes Master → kubelet → KubeGenericRuntimeManager → containerd → runC**
+
