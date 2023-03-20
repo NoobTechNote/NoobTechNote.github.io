@@ -212,3 +212,132 @@ Kubernetes 提供了 Autoscaling 資源和自動擴縮控制器，能夠自動�
 故障恢復、滾動更新、自動擴縮這些特性，在雲原生中時代裡常被概括成服務的彈性（Elasticity）與韌性（Resilience），ReplicaSet、Deployment、Autoscaling 的用法，也屬於是所有 Kubernetes 教材資料都會講到的“基礎必修課”
 :::
 
+## 以應用為中心的封裝
+
+> Kubernetes 被譽為雲原生時代的操作系統，自誕生之日起就因其出色的管理能力、擴展性與以聲明代替命令的交互理念收穫了無數喝彩聲；但是，從易用角度講，坦白說差距還非常大，雲原生基礎設施的其中一個重要目標是接管掉業務系統複雜的非功能特性，讓業務研發與運維工作變得足夠簡單，不受分佈式的牽絆，然而 Kubernetes 被詬病得最多的就是複雜，自誕生之日起就以陡峭的學習曲線而聞名。
+
+### Kustomize
+
+- Kubernetes 官方給出“如何封裝應用”的解決方案是“用配置文件來配置配置文件”
+- Kubernetes 官方認為應用就是一組具有相同目標的 Kubernetes 資源的集合，把應用中不變的信息與易變的信息分離開來解決管理問題，把應用所有涉及的資源自動生成一個多合一（All-in-One）的整合包來解決部署問題。
+
+**Kustomize 的主要價值是根據環境來生成不同的部署配置**
+
+:::note
+只要建立多個 Kustomization 文件，開發人員就能以基於基准進行派生（Base and Overlay）的方式，對不同的模式（譬如生產模式、調試模式）、不同的項目（同一個產品對不同客戶的客制化）定制出不同的資源整合包。
+:::
+
+```
+k8s
+ ├── base
+ │     ├── deployment.yaml
+ │     ├── kustomization.yaml
+ │     └── service.yaml
+ └── overlays
+       ├── prod
+       │     ├── load-loadbalancer-service.yaml
+       │     └── kustomization.yaml
+       └── debug
+             └── kustomization.yaml
+```
+
+Kustomize 使用 Base、Overlay 和 Patch 生成最終配置文件的思路與 Docker 中分層鏡像的思路有些相似，既規避了以“字符替換”對資源元數據文件的入侵
+
+### Helm 與 Chart
+
+> Helm 一開始的目標就很明確：如果說 Kubernetes 是雲原生操作系統的話，那 Helm 就要成為這個操作系統上面的應用商店與包管理工具。
+
+:::tip
+有了包管理工具，你只要知道應用的名稱，就可以很方便地從應用倉庫中下載、安裝、升級、部署、卸載、回滾程序，而且包管理工具自己掌握著應用的依賴信息和版本變更情況，具備完整的自管理能力，每個應用需要依賴哪些前置的第三方庫，在安裝的時候都會一併處理好。
+:::
+
+#### Helm
+
+> Helm 模擬的就是上面這種做法，它提出了與 Linux 包管理直接對應的 Chart 格式和 Repository 應用倉庫，針對 Kubernetes 中特有的一個應用經常要部署多個版本的特點，也提出了 Release 的專有概念。
+
+#### Chart
+
+> Chart 用於封裝 Kubernetes 應用涉及到的所有資源，通常以目錄內的文件集合的形式存在。目錄名稱就是 Chart 的名稱（沒有版本信息）
+
+**WordPress Chart 的目錄結構**
+
+```
+WordPress
+ ├── templates
+ │     ├── NOTES.txt
+ │     ├── deployment.yaml
+ │     ├── externaldb-secrets.yaml
+ │     ├── 版面原因省略其他资源文件
+ │     └── ingress.yaml
+ ├── Chart.yaml
+ ├── requirements.yaml
+ └── values.yaml
+```
+
+- `Chart.yaml` 給出了應用自身的詳細信息（名稱、版本、許可證、自述、說明、圖標，等等）
+- `requirements.yaml` 給出了應用的依賴關係，依賴項指向的是另一個應用的坐標（名稱、版本、Repository 地址）
+- `values.yaml` 給出了所有可配置項目的預定義值
+- 可配置項是指需要部署期間由運維人員調整的那些參數，它們以花括號包裹在 `templates` 目錄下的資源文件中，部署應用時，Helm 會先將管理員設置的值覆蓋到 `values.yaml` 的默認值上，然後以字符串替換的形式傳遞給 `templates` 目錄的資源模版，最後生成要部署到 Kubernetes 的資源文件
+
+### Operator 與 CRD
+
+> Operator 不應當被稱作是一種工具或者係統，它應該算是一種封裝、部署和管理 Kubernetes 應用的方法，尤其是針對最複雜的有狀態應用去封裝運維能力的解決方案
+
+:::info Operator 設計理念
+Operator 是使用自定義資源（CR，筆者註：CR 即 Custom Resource，是 CRD 的實例）管理應用及其組件的自定義 Kubernetes 控制器。高級配置和設置由用戶在 CR 中提供。Kubernetes Operator 基於嵌入在 Operator 邏輯中的最佳實踐將高級指令轉換為低級操作。Kubernetes Operator 監視 CR 類型並採取特定於應用的操作，確保當前狀態與該資源的理想狀態相符。
+:::
+
+#### 有狀態應用（Stateful Application）
+
+> 程序每次運行都跟首次運行一樣，不會依賴之前任何操作所遺留下來的痕跡
+
+#### 無狀態應用（Stateless Application）
+
+> 程序推倒重來之後，用戶能察覺到該應用已經發生變化
+
+站在 Kubernetes 的角度看，是否有狀態的本質差異在於有狀態應用會對某些外部資源有綁定性的直接依賴，譬如 Elasticsearch 建立實例時必須依賴特定的存儲位置，重啟後仍然指向同一個數據文件的實例才能被認為是相同的實例
+
+#### StatefulSet 管理的 Pod 具備特性：
+
+- **Pod 會按順序創建和按順序銷毀**：StatefulSet 中的各個 Pod 會按順序地創建出來，創建後續的 Pod 前，必須要保證前面的 Pod 已經轉入就緒狀態。刪除 StatefulSet 中的 Pod 時會按照與創建順序的逆序來執行。
+- **Pod 具有穩定的網絡名稱**：Kubernetes 中的 Pod 都具有唯一的名稱，在普通的副本集中這是靠隨機字符產生的，而在 StatefulSet 中管理的 Pod，會以帶有順序的編號作為名稱，且能夠在重啟後依然保持不變。。
+- **Pod 具有穩定的持久存儲**：StatefulSet 中的每個 Pod 都可以擁有自己獨立的 PersistentVolumeClaim 資源。即使 Pod 被重新調度到其它節點上，它所擁有的持久磁盤也依然會被掛載到該 Pod，這點會在“容器持久化”中進一步介紹。
+
+:::tip
+如果把 ReplicaSet 中的 Pod 比喻為養殖場中的“肉豬”，那 StatefulSet 就是被家庭當寵物圈養的“荷蘭豬”，不同的肉豬在食用功能上並沒有什麼區別，但每隻寵物豬都是獨一無二的，有專屬於自己的名字、習性與記憶，事實上，早期的 StatefulSet 就曾經有一段時間用過 PetSet 這個名字
+:::
+
+- Helm 和 Kustomize 最終仍然是依靠 Kubernetes 的內置資源來跟 Kubernetes 打交道的
+- Operator 則是要求開發者自己實現一個專門針對該自定義資源的控制器，在控制器中維護自定義資源的期望狀態
+
+### 開放應用模型
+
+> 開放應用模型思想的核心是如何將開發人員、運維人員與平台人員關注點分離，開發人員關注業務邏輯的實現，運維人員關注程序平穩運行，平台人員關注基礎設施的能力與穩定性
+
+:::info OAM 定義的應用
+
+一個 **Application** 由一組 **Components** 構成，每個 **Component** 的運行狀態由 **Workload** 描述，每個 **Component** 可以施加 **Traits** 來獲取額外的運維能力，同時我們可以使用 **Application Scopes** 將 **Components** 劃分到一或者多個應用邊界中，便於統一做配置、限制、管理。把 **Components**、**Traits** 和 **Scopes** 組合在一起實例化部署，形成具體的 **Application Configuration**，以便解決應用的多實例部署與升級。
+:::
+
+- **服務組件（Components）**：由 Component 構成應用的思想自 SOA 以來就屢見不鮮，然而 OAM 的 Component 不僅僅是特指構成應用“整體”的一個“部分”，它還有一個重要職責是抽像那些應該由開發人員去關注的元素
+
+- **工作負荷（Workload）**：Workload 決定了應用的運行模式，每個 Component 都要設定自己的 Workload 類型，OAM 按照“是否可訪問、是否可複制、是否長期運行”預定義了六種 Workload 類型
+
+| 工作負荷         | 可訪問 | 可複制 | 長期運行 |
+| ---------------- | ------ | ------ | -------- |
+| Server           | √      | √      | √        |
+| Singleton Server | √      | x      | √        |
+| Worker           | x      | √      | √        |
+| Singleton Worker | x      | x      | √        |
+| Task             | x      | √      | x        |
+| Singleton Task   | x      | x      | x        |
+
+- **運維特徵（Traits）**：OAM 的 Traits 就用於封裝模塊化後的運維能力，可以針對運維中的可重複操作預先設定好一些具體的 Traits，譬如日誌收集 Trait、負載均衡 Trait、水平擴縮容 Trait，等等。這些預定義的 Traits 定義裡，會註明它們可以作用於哪種類型的工作負荷、包含能填哪些參數、哪些必填選填項、參數的作用描述是什麼，等等。
+
+- **應用邊界（Application Scopes）**：多個 Component 共同組成一個 Scope，根據 Component 的特性或者作用域來劃分 Scope，譬如具有相同網絡策略的 Component 放在同一個 Scope 中，具有相同健康度量策略的 Component 放到另一個 Scope 中。同時，一個 Component 也可能屬於多個 Scope，譬如一個 Component 完全可能既需要配置網絡策略，也需要配置健康度量策略。
+
+- **應用配置（Application Configuration）**：將 Component（必須）、Trait（必須）、Scope（非必須）組合到一起進行實例化，就形成了一個完整的應用配置。
+
+OAM 使用上述介紹的這些自定義資源將原先 All-in-One 的複雜配置做了一定層次的解耦，開發人員負責管理 Component；運維人員將 Component 組合併綁定 Trait 變成 Application Configuration；平台人員或基礎設施提供方負責提供 OAM 的解釋能力，將這些自定義資源映射到實際的基礎設施。不同角色分工協作，整體簡化了單個角色關注的內容，使得不同角色可以更聚焦更專業的做好本角色的工作
+
+![OAM 角色關係圖](./ch11/11-7.png)
