@@ -359,7 +359,8 @@ GET https://api.datamarket.com/Bing/Search/Web?Query=%27New+Xbox%27
 :::
 
 ## 2.5.5 查詢參數與路徑的使用區別
-可附加在查詢參數的資訊也能放置在路徑 e.g. LinkedIn API
+可附加在查詢參數的資訊也能放置在路徑 e.g. [LinkedIn API](https://docs.microsoft.com/en-us/linkedin/marketing/integrations/community-management/organizations/company-search?context=linkedin%2Fcompliance%2Fcontext&tabs=http)
+
 ```
 GET /company/1337:(id,name,description,industry)
 ```
@@ -429,13 +430,13 @@ Server 端驗證後成功後的回傳範例:
 
 Client 端發送 `bearer  access_token` 給 server 的形式有三類:
 - request header: Authorization 帶有 Bearer 作為前綴
-```
+```jsx title="Request Header" 
 GET /users HTTP1.1
 Host: api.sample.com
 Authorization: Bearer <base64_code>
 ```
 - request body: 指定 Content-Type
-```
+```jsx title="Request Body" 
 POST /users HTTP1.1
 Host: api.sample.com
 Content-Type: application/x-www-form-urlencoded
@@ -443,12 +444,12 @@ Content-Type: application/x-www-form-urlencoded
 access_token=<base64_code>
 ```
 - 以查詢參數的方式加到 URI 裡
-```
+```jsx title="Parameters in URI" 
 GET /users?access_token=<base64_code> HTTP1.1
 Host: api.sample.com
 ```
 
-:::info Discussion: 
+:::info Discussion
 OAuth 如何整合現有的系統驗證流程，如：資料庫內表的結構如何設計？
 :::
 
@@ -472,11 +473,16 @@ Content-Type: application/x-www-form-urlencoded
 grant_type=refresh_token&refresh_token=<base64_code>
 ```
 
-## 2.6.2 其他 grant type
+## 2.6.2 其他 Grant Type
 - Authorization Code、Implicit Code 被使用的情況:
 第三方服務希望被允許訪問你的在線服務裡保存的用戶資訊。
 - Client Credentials
-- 補充: 自身訊息的別名 (alias)
+- 補充: 自身訊息的別名 (alias)：透過 API 訪問用戶自己的訊息，不再需要一個個指定用戶的 ID，使用 `self`, `me` 等 key words 表示用戶自己，透過 access token 獲取綁定的用戶資訊。
+
+    | Service  | Key Words   |   Sample   |   
+    | ----------- | ------------ | ------------ | 
+    | [Instagram](https://www.instagram.com/developer/changelog/)   |  self   |   users/self/media/liked  |  
+    | [LinkedIn](https://docs.microsoft.com/en-us/linkedin/shared/integrations/people/profile-api)   |  me   |  /me   |  
 ## 2-7 主機名 & 端點共有的部分
 比較表 2-16，主流服務的 API 設計
     
@@ -495,3 +501,80 @@ https://api.example.com/v1
 - 終端使用者的體驗
 
 > 範例： 電商 mobile APP 的 API
+
+## 2.9 HATEOAS & REST Level3 API
+Martin Fowler: 達成完美的 REST API 設計前，有下述幾種設計級別:
+- REST LEVEL 0: 使用 HTTP
+- REST LEVEL 1:  引入資源的概念
+- REST LEVEL 2:  引入 HTTP 動詞
+- REST LEVEL 3: 引入 HATEOAS 概念
+
+HATEOAS (Hypermedia as the Engine of Application State) 最早源自於 Roy Fielding，Hyper-Media 由多個媒體連結而成，表透過 API 處理的資源。
+
+> HATEOAS 回傳的資料裡帶有下一步要執行的行為、要取得的數據等 URI 的資訊
+
+```json title="SNS 範例"
+{
+	"friends": [
+		{ "name": "Tom",
+			"link": {
+				"uri": "https://api.example.com/v1/users/1",
+				"rel": "user/detail"
+			}
+		},
+		{ "name": "Jack",
+			"link": {
+				"uri": "https://api.example.com/v1/users/2",
+				"rel": "user/detail"
+			}
+		},
+        ....
+	],
+	"link": {
+		"uri": "https://api.example.com/v1/users/me/friends?since_id=123"	
+		"rel": "next"
+	}
+}
+```
+`rel`: 用於表示 URI 與當前數據的關係 
+```json title="訪問特定用戶的 URI"
+{
+	"id": 1,
+	"name": "Tom"
+	....
+	....
+	"link": {
+		"uri": "https://api.example.com/v1/users/1/messages"	
+		"rel": "friends/messages"
+	}
+}
+```
+
+> Client 端只需知道 API endpoint 的進入點，即可取得 API 提供的功能
+
+Q: Client 端如何知道當前訪問的數據類型？
+> 藉由 HTTP Header 裡 Content-Type 告知 Client 端訪問的數據類型
+
+## 2.9.1 REST LEVEL 3 API 的優點
+- Client 端無需事先知道 URI 資訊也能順利訪問
+- 減少 Client 端因 URI 出錯導致 bug 發生的機率
+- 減少開發團隊修改上的負擔
+
+:::info Discussion 
+HATEOAS 的缺點
+:::
+## 2.9.2 REST LEVEL 3 API
+
+:::info Discussion 
+採用 HATEOAS 的時機點
+:::
+
+## 2.10 小結
+多參考 [ProgrammableWeb](https://www.programmableweb.com/apis/directory) 的 API  範例，比較其他服務的設計方法，設計出優美、好用的 API。
+
+:::tip Good
+- 設計好記、功能一目瞭然的 endpoint
+- 使用適合的 HTTP 方法
+- 選擇適合的英文單詞、注意單詞的單複數
+- 使用 OAuth 2.0 驗證
+::: 
