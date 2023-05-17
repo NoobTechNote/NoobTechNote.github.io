@@ -64,7 +64,7 @@ import { faCoffee } from '@fortawesome/free-solid-svg-icons'
 | __ 加入新的Consumer   __ | 要建立新Queue，Producer也需要做修改                                                                           | <icon icon="fa fa-check" style={{color: '#09ff09'}} size="lg" /> 只需要建立新的Consumer訂閱需要的Topic |
 | __ Producer受到的制約 __ | 較多，對於誰要消費資料要有認知，有耦合                                                                        | <icon icon="fa fa-check" style={{color: '#09ff09'}} size="lg" /> 較少，耦合低                          |
 | __ 資料安全           __ | <icon icon="fa fa-check" style={{color: '#09ff09'}} size="lg" /> 較好，除了特定的接收者之外沒有人能看到資料   | 任何Consumer都能讀取資料                                                                               |
-| __ 合約同質性         __ | <icon icon="fa fa-check" style={{color: '#09ff09'}} size="lg" /> 只能支援同質合約                             | Consumer可以有所需資料相關的自有合約                                                                   |
+| __ 合約同質性         __ | <icon icon="fa fa-check" style={{color: '#09ff09'}} size="lg" /> Consumer可以有所需資料相關的自有合約                             |    只能支援同質合約                                                                |
 | __ 監控Event __          | <icon icon="fa fa-check" style={{color: '#09ff09'}} size="lg" /> 每個Queue可以個別監控，因此可以設計自動scale | 不支援監控，無法自動Scale                                                                              |
 
 
