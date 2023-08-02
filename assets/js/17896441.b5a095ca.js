@@ -1,1 +1,0 @@
-"use strict";(self.webpackChunknoobtechnote_github_io_source=self.webpackChunknoobtechnote_github_io_source||[]).push([[7918],{31769:(o,e,c)=>{c.d(e,{Z:()=>b});c(67294);var n=c(44588),t=c(67814),s=c(23636),u=c(93024),h=c(59417);s.vI.add(u.vnX,h.mRB);const b={...n.Z,icon:t.G}}}]);
