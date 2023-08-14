@@ -1,0 +1,95 @@
+---
+title: "Ch19: 架構決策"
+tsidebar_label: "Ch19: 架構決策"
+sidebar_position: 19
+---
+
+
+## 反模式
+
+### 掩蓋資產反模式
+
+### 土撥鼠日反模式
+
+### 電子郵件驅動架構反模式
+
+## 架構決策紀錄ADR
+
+> ADR: Architecture Decision Records
+
+### Why ADR?
+
+* 圖示架構的標準有很多種
+    * [Simon Brown: C4 Model](https://c4model.com/)
+        * Top-down的四個階層各有一張圖
+        * Context, Container, Component, Code
+    * [Open Group ArchiMate](https://pubs.opengroup.org/architecture/archimate2-doc/toc.html)
+        * 3 Layers: Business, Application, Technology
+        * Type of releations: Structural, Dynamic, Other
+        * Cross-layer depdendency
+* 對於架構本身的描述沒有紀錄標準 - ADR存在的原因
+
+### ADR的段落
+
+#### 標題
+#### 狀態
+#### 背景
+#### 決策
+#### 後果
+#### 合規
+#### 註解
+
+### ADR的範例
+
+
+<div style={{width: "80%", padding: "1.5em", border: "2px dotted #333", backgroundColor: "#5f52"}}>
+<h3>ADR 76. 出價服務之間的非同步酸布/ 訂關傅訊</h3>
+<hr/>
+<ul style={{paddingLeft: 0}}>
+    <li style={{listStyleType: "none", marginBottom: "2em"}}>
+        <h4>狀態</h4>
+        <span>接受</span>
+    </li>
+    <li style={{listStyleType: "none", marginBottom: "2em"}}>
+        <h4>背景</h4>
+        <span>
+            出價記錄服務，收到來自於線上出價人或透過拍賣人的現場出價後，必須將其轉送至出價串流及出價追蹤服務。這可以透過線上拍寶 API 層，利用非同步的點對點（p2p）傳訊、非同步的發布/ 訂閱傳訊、或 REST 來實現。
+        </span>
+    </li>
+    <li style={{listStyleType: "none", marginBottom: "2em"}}>
+        <h4>決策</h4>
+        <span>
+            我們會在出價記錄服務、出價串流服務、及出價追蹤服務之間，使用非同步發布/訂閱傳訊。
+            出價記錄服務不需要從出價串流服務、或出價追蹤服務回傳資訊。
+            出價串流服務所收到出價的順序，必須與這些出價被出價記錄服務收到的順序完全一致。使用傳訊及佇列能夠自動保證串流裡的出價順序。
+            使用非同步發布/訂閱傳訊可提高出價程序的效能，讓出價資訊的擴充性得以實現。
+        </span>
+    </li>
+    <li style={{listStyleType: "none", marginBottom: "2em"}}>
+        <h4>後果</h4>
+        <span>
+            我們需要叢集以及訊息佇列的高可用性。
+            內部出價事件會跳過 API 層執行的安全檢查。
+            更新：根據 04/14/2020 的 ARB 會議審查，ARB 決定接受這項取捨，市且這些服務之間的出價事件不需要額外的安全檢查。
+        </span>
+    </li>
+    <li style={{listStyleType: "none", marginBottom: "2em"}}>
+        <h4>合規</h4>
+        <span>
+            我們利用週期性人工的程式碼及設計審查，來確保出價記錄服務、出價串流服務、及出價追蹤服務之間，使用的是非同步發布/ 訂閱傳訊。
+        </span>
+    </li>
+    <li style={{listStyleType: "none"}}>
+        <h4>註解</h4>
+        <span>
+        作者：Subashini Nadella<br/>
+        同意人：ARB 會議成員，04/14/2020<br/>
+        最後更新：04/15/2020, Subashini Nadella
+        </span>
+    </li>
+</ul>
+
+</div>
+
+
+### 以ADR作為標準
