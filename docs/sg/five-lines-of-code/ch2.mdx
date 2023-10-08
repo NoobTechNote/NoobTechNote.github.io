@@ -1,0 +1,288 @@
+---
+title: "Ch2: 深入瞭解重構的原理"
+sidebar_label: "Ch2: 深入瞭解重構的原理"
+sidebar_position: 2
+---
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+## 可讀性與可維護性
+
+### 2.1 可讀性 Readability
+
+:::info Discussion
+大家來找碴，以下程式碼有什麼可以改善的
+:::
+
+<Tabs>
+<TabItem value="Before Refactor" default>
+
+```typescript
+function checkValue(str: boolean) {
+    // Check Value
+
+    if (str !== false) {
+        // return result
+        return true;
+    }
+
+    else;
+        return str;
+}
+```
+</TabItem>
+<TabItem value="After Refactor">
+
+```typescript
+function isTrue(bool: boolean) {
+    return bool;
+}
+```
+</TabItem>
+</Tabs>
+
+
+### 2.1 可維護性 Maintainability
+
+* 可維護性：在想對程式碼修改時，對於其閱讀理解、評估修改程度，來適應新目標時，所需要進行調查的「程度」
+* 需要的調查時間越長，代表可維護性越差
+
+:::caution 系統脆弱 System Fragile
+在進行程式碼修改時，破壞到另一個看似不相關的功能，這種脆弱性的根源通常來自於「全域狀態(Global State)」
+:::
+
+* 全域狀態
+    * 全域：指我們考量範圍之外的東西
+    * 狀態：在執行階段能夠改變的任何東西
+* 全域狀態之所以有問題，在於容易引入Side Effect
+    * 即「你覺得他不會變，但他卻在預期之外地被其他人給改變了」
+
+### 範例：雜貨店庫存管理
+
+<Tabs>
+<TabItem value="Goods Class" default>
+
+```typescript
+class Good {
+    constructor(quant, price) {
+        this.quant = quant
+        this.price = price
+    }
+
+    getQuant() { return this.quant }
+    getPrice() { return this.price }
+    daysUntilExpiry() { this.quant -= 1 }
+}
+
+class Apple extends Good {
+    constructor(quant) { super(quant) }
+}
+
+class LightBall extends Good {
+    constructor(quant) { super(quant) }
+
+    daysUntilExpiry() {
+        // 燈泡不會過期，不需要每天自減庫存，Override掉parent method
+        this.quant -= 1
+    }
+}
+```
+</TabItem>
+<TabItem value="Urgency Ranking">
+
+* 價格高的要優先賣；庫存高的也該優先賣出
+* OCP: 對擴展開放、對實作封閉
+* 這幾乎只能依賴工程師「記得」quanty會被拿去算Urgency才能避免bug
+
+
+```typescript
+const apple = new Apple(5, 20)
+const lightBall = new LightBall(3, 100)
+
+// ...
+
+const appleUrgency = apple.getPrice() / apple.getQuant()
+const lightBallUrgency = lightBall.getPrice() / lightBall.getQuant() // buggy
+
+
+
+
+
+
+
+
+
+
+
+```
+
+</TabItem>
+</Tabs>
+
+### 2.1.2 「改變程式碼而不改變其功能」
+
+* 被重構所納入的程式碼「範圍」要有多大，是個頭痛的問題
+    * 納入重構的程式碼範圍越大，「不改變其從外看起來的功能」越容易，但風險、程式碼合併衝突的機會就越高
+* 適當的重構範圍是一個困難，且重要的取捨平衡
+
+:::caution 重構的三大基石
+1. 透過清晰的表達意圖來提昇可讀性
+2. 透過局部化不變條件來提高可維護性
+3. 不影響關注範圍之外的任何程式碼，來達成1.與2.
+:::
+
+## 2.2 提高速度、彈性、穩定性
+
+
+### 組合與繼承
+
+> 「善用物件組合，而非繼承」 - GoF, Design Patterns
+
+* 當程式可以透過改變其組合而變更其功能時，就容易快速抽換零件，其能被修改的「彈性」就會越好
+
+#### 範例：Bird and Peguin
+
+* 如果要在Bird interface加入一個`canSwim()`，會發生什麼事？
+
+<Tabs>
+<TabItem value="Inheritance" default>
+
+```typescript
+interface Bird {
+    hasBeak(): boolean;
+    canFly(): boolean;
+}
+class CommonBird implements Bird {
+    hasBeak() { return true; }
+    canFly() { return true; }
+}
+class Peguin extends CommonBird {
+    canFly() { return false; } // override
+}
+
+
+```
+</TabItem>
+<TabItem value="Composition">
+
+```typescript
+interface Bird {
+    hasBeak(): boolean;
+    canFly(): boolean;
+}
+class CommonBird implements Bird {
+    hasBeak() { return true; }
+    canFly() { return true; }
+}
+class Peguin implements Bird {
+    private bird = new CommonBird();
+    hasBeak() { return bird.hasBeak(); } // Manually re-raised
+    canFly() { return false; }
+}
+```
+</TabItem>
+</Tabs>
+
+#### 範例：雜貨店庫存管理 (續)
+
+<Tabs>
+<TabItem value="Inheritance" default>
+
+```typescript
+class Good {
+    constructor(quant, price) {
+        this.quant = quant
+        this.price = price
+    }
+
+    getQuant() { return this.quant }
+    getPrice() { return this.price }
+    daysUntilExpiry() { this.quant -= 1 }
+}
+
+class Apple extends Good {
+    constructor(quant) { super(quant) }
+}
+
+class LightBall extends Good {
+    constructor(quant) { super(quant) }
+
+    daysUntilExpiry() {
+        // 燈泡不會過期，不需要每天自減庫存，Override掉parent method
+        this.quant -= 1
+    }
+}
+
+
+
+
+
+
+```
+</TabItem>
+<TabItem value="Composition">
+
+```typescript
+interface Good {
+    getQuant(): int;
+    getPrice(): int;
+    daysUntilExpiry(): void;
+}
+
+class Apple implements Good {
+    constructor(quant, price) {
+        this.quant = quant
+        this.price = price
+    }
+    getQuant() { return this.quant }
+    getPrice() { return this.price }
+    daysUntilExpiry() {
+        this.quant -= 1
+    }
+}
+
+class LightBall implements Good {
+    constructor(quant, price) {
+        this.quant = quant
+        this.price = price
+    }
+    getQuant() { return this.quant }
+    getPrice() { return this.price }
+    daysUntilExpiry() {
+        // do nothing
+    }
+}
+```
+</TabItem>
+</Tabs>
+
+### 透過「新增」來修改
+
+* 「以新增，而不是修改的方式來變更程式碼」
+* 這是使用「組合」而非「繼承」帶來的好處
+    * 對擴展開放、對實作封閉 (OCP)
+* 因為不會去更動原有的程式碼，加上避免Global State的作法，修改(或說，新增)程式碼不容易引入新的錯誤
+    * 提高了穩定性
+
+:::info Discussion
+程式碼一直被透過「新增」來修改，那改到後來，沒用到的程式碼(Dead Code)該怎麼辦？
+:::
+
+## 2.3 重構與日常工作
+
+> 離開某個地方前，讓那裡比使用前更加乾淨 - 童子軍規則
+
+* 前面提過的，重構的時機
+    1. 在修改程式碼**前**，進行重構
+    2. 在修改程式碼**後**，進行重構
+* 以重構作為學習
+    * 改code容易還是寫code容易？
+    * 重構是需要學習的，是一種研究程式碼的方式
+
+## 小結
+
+* 避免Global State，把不變條件局部化，而不改變其功能而完成重構
+* 謹慎選擇重構的「範圍」大小
+* 優先採用「組合」而非「繼承」
+* 重構應該是日常工作的一部分，以防止技術債累積
+* 重構是需要學習的，給了我們看待程式碼的獨特視角和觀點
