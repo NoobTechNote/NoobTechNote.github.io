@@ -1,0 +1,12 @@
+<svg width="180" height="161" xmlns="http://www.w3.org/2000/svg">
+ <g>
+  <title>Layer 1</title>
+  <ellipse ry="56" rx="56" id="svg_1" cy="100" cx="60" stroke="#4c4c4c" fill="none"/>
+  <ellipse ry="56" rx="56" id="svg_3" cy="100" cx="120" stroke="#4c4c4c" fill="none"/>
+  <ellipse ry="56" rx="56" id="svg_4" cy="60" cx="90" stroke="#4c4c4c" fill="none"/>
+  <text transform="matrix(0.68033 0 0 0.68033 65.852 63.7497)" stroke="#000" font-style="normal" xml:space="preserve" text-anchor="start" font-family="Noto Sans JP" font-size="23" stroke-width="0" id="svg_5" y="-47.51724" x="-2.72224" fill="#00cfbf">Culture</text>
+  <text transform="matrix(0.68033 0 0 0.68033 65.852 63.7497)" stroke="#000" font-style="normal" xml:space="preserve" text-anchor="start" font-family="Noto Sans JP" font-size="23" stroke-width="0" id="svg_7" y="80.36188" x="88.41" fill="#00cfbf">Tools</text>
+  <text transform="matrix(0.68033 0 0 0.68033 65.852 63.7497)" stroke="#000" font-style="normal" xml:space="preserve" text-anchor="start" font-family="Noto Sans JP" font-size="23" stroke-width="0" id="svg_8" y="81.83175" x="-70.33649" fill="#00cfbf">Skill</text>
+  <text transform="matrix(0.68033 0 0 0.68033 65.852 63.7497)" stroke="#000" font-style="normal" xml:space="preserve" text-anchor="start" font-family="Noto Sans JP" font-size="23" stroke-width="0" id="svg_9" y="45.08488" x="-5.66199" fill="#ff5f5f">Refactor</text>
+ </g>
+</svg>
