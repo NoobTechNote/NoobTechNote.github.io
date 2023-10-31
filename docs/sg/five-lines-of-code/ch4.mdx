@@ -1042,3 +1042,851 @@ function transfer(from: string, to: string, amount: number) {
 </Tabs>
 </TabItem>
 </Tabs>
+
+## 4.2 重構大型的if陳述句
+
+### if ONLY AT START
+
+<Tabs>
+<TabItem value="原本的程式碼">
+
+```
+function drawMap(g: CanvasRenderingContext2D) {
+  for (let y = 0; y < map.length; y++) {
+    for (let x = 0; x < map[y].length; x++) {
+      if (map[y][x] === Tile.FLUX)
+        g.fillStyle = "#ccffcc";
+      else if (map[y][x] === Tile.UNBREAKABLE)
+        g.fillStyle = "#999999";
+      else if (map[y][x] === Tile.STONE || map[y][x] === Tile.FALLING_STONE)
+        g.fillStyle = "#0000cc";
+      else if (map[y][x] === Tile.BOX || map[y][x] === Tile.FALLING_BOX)
+        g.fillStyle = "#8b4513";
+      else if (map[y][x] === Tile.KEY1 || map[y][x] === Tile.LOCK1)
+        g.fillStyle = "#ffcc00";
+      else if (map[y][x] === Tile.KEY2 || map[y][x] === Tile.LOCK2)
+        g.fillStyle = "#00ccff";
+
+      if (map[y][x] !== Tile.AIR && map[y][x] !== Tile.PLAYER)
+        g.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+    }
+  }
+}
+```
+
+</TabItem>
+<TabItem value="使用EXTRACT METHOD">
+
+```
+function drawMap(g: CanvasRenderingContext2D) {
+  for (let y = 0; y < map.length; y++) {
+    for (let x = 0; x < map[y].length; x++) {
+      colorOfTile(g, x, y)
+      if (map[y][x] !== Tile.AIR && map[y][x] !== Tile.PLAYER)
+        g.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+    }
+  }
+}
+
+function colorOfTile(g: CanvasRenderingContext2D, x: number, y: number) {
+  if (map[y][x] === Tile.FLUX)
+    g.fillStyle = "#ccffcc";
+  else if (map[y][x] === Tile.UNBREAKABLE)
+    g.fillStyle = "#999999";
+  else if (map[y][x] === Tile.STONE || map[y][x] === Tile.FALLING_STONE)
+    g.fillStyle = "#0000cc";
+  else if (map[y][x] === Tile.BOX || map[y][x] === Tile.FALLING_BOX)
+    g.fillStyle = "#8b4513";
+  else if (map[y][x] === Tile.KEY1 || map[y][x] === Tile.LOCK1)
+    g.fillStyle = "#ffcc00";
+  else if (map[y][x] === Tile.KEY2 || map[y][x] === Tile.LOCK2)
+    g.fillStyle = "#00ccff";
+}
+````
+
+</TabItem>
+</Tabs>
+
+### NEVER USE if WITH else
+
+<Tabs>
+<TabItem value="定義新介面" default>
+
+```
+interface Tile2 {
+  isFlux(): boolean;
+  isUnbreakable(): boolean;
+  isStone(): boolean;
+  //...   <----------| enum的所有值都有其對應的方法
+}
+```
+
+</TabItem>
+
+<TabItem value="定義新的類別實作新介面">
+
+```
+class Flux implements Tile2 {
+  isFlux() { return true; }
+  isUnbreakable() { return false; }
+  isStone() { return false; }
+  // ...
+}
+```
+
+</TabItem>
+
+<TabItem value="參考舊enum">
+
+```
+enum Tile {
+  AIR,
+  FLUX,
+  UNBREAKABLE,
+  PLAYER,
+  STONE, FALLING_STONE,
+  BOX, FALLING_BOX,
+  KEY1, LOCK1,
+  KEY2, LOCK2
+}
+```
+
+</TabItem>
+
+<TabItem value="舊enum改名以看到編譯錯誤的位置">
+
+```
+enum RawTile {
+  AIR,
+  FLUX,
+  UNBREAKABLE,
+  PLAYER,
+  STONE, FALLING_STONE,
+  BOX, FALLING_BOX,
+  KEY1, LOCK1,
+  KEY2, LOCK2
+}
+```
+
+</TabItem>
+</Tabs>
+
+<Tabs>
+<TabItem value="本來的程式碼">
+
+```
+function colorOfTile(g: CanvasRenderingContext2D, x: number, y: number) {
+  if (map[y][x] === Tile.FLUX)
+    g.fillStyle = "#ccffcc";
+  else if (map[y][x] === Tile.UNBREAKABLE)
+    g.fillStyle = "#999999";
+  else if (map[y][x] === Tile.STONE || map[y][x] === Tile.FALLING_STONE)
+    g.fillStyle = "#0000cc";
+  else if (map[y][x] === Tile.BOX || map[y][x] === Tile.FALLING_BOX)
+    g.fillStyle = "#8b4513";
+  else if (map[y][x] === Tile.KEY1 || map[y][x] === Tile.LOCK1)
+    g.fillStyle = "#ffcc00";
+  else if (map[y][x] === Tile.KEY2 || map[y][x] === Tile.LOCK2)
+    g.fillStyle = "#00ccff";
+}
+```
+
+</TabItem>
+<TabItem value="使用新的方法取代本來的enum">
+
+```
+function colorOfTile(g: CanvasRenderingContext2D, x: number, y: number) {
+  if (map[y][x].isFlux())
+    g.fillStyle = "#ccffcc";
+  else if (map[y][x].isUnbreakable())
+    g.fillStyle = "#999999";
+  else if (map[y][x].isStone() || map[y][x].isFallingStone())
+    g.fillStyle = "#0000cc";
+  else if (map[y][x].isBox() || map[y][x].isFallingBox())
+    g.fillStyle = "#8b4513";
+  else if (map[y][x].isKey1() || map[y][x].isLock1())
+    g.fillStyle = "#ffcc00";
+  else if (map[y][x].isKey2() || map[y][x].isLock2())
+    g.fillStyle = "#00ccff";
+}
+```
+
+</TabItem>
+</Tabs>
+
+<Tabs>
+<TabItem value="剩下最後兩個錯誤">
+
+```
+let map: Tile[][] = [
+  [2, 2, 2, 2, 2, 2, 2, 2],
+  [2, 3, 0, 1, 1, 2, 0, 2],
+  [2, 4, 2, 6, 1, 2, 0, 2],
+  [2, 8, 4, 1, 1, 2, 0, 2],
+  [2, 4, 1, 1, 1, 9, 0, 2],
+  [2, 2, 2, 2, 2, 2, 2, 2]
+];
+
+function remove(tile: Tile) {
+  for (let y = 0; y < map.length; y++) {
+    for (let x = 0; x < map[y].length; x++) {
+      if (map[y][x] === tile) {
+        map[y][x] = new Air();
+      }
+    }
+  }
+}
+```
+
+</TabItem>
+</Tabs>
+
+這兩個錯誤需要特殊的處置，因此我們將逐一進行處理。
+
+### 4.2.1 去除泛化通用性
+
+<Tabs>
+<TabItem value="Listing 4.71 原本的程式碼">
+
+```
+function remove(tile: Tile) {
+  for (let y = 0; y < map.length; y++) {
+    for let x = 0; x < map[y].length; x++) {
+      if (map[y][x] === tile) {
+        map[y][x] = new Air();
+      }
+    }
+  }
+}
+```
+
+</TabItem>
+</Tabs>
+
+<Tabs>
+<TabItem value="觀察本來的方法的使用方式">
+
+```
+/// ...
+remove(new Lock1());
+/// ...
+remove(new Lock2());
+/// ...
+remove(new Lock1());
+/// ...
+remove(new Lock2());
+/// ...
+```
+
+</TabItem>
+<TabItem value="複製一份方法成remove2">
+
+```
+function remove2(tile: Tile) {
+  // ...
+}
+```
+
+</TabItem>
+<TabItem value="使用方式">
+
+```
+function remove2(tile: Tile) {
+  // ... for Lock1
+}
+function remove2(tile: Tile) {
+  // ... for Lock2
+}
+```
+
+</TabItem>
+<TabItem value="改名去參數">
+
+```
+function removeLock1() {
+  for (let y = 0; y < map.length; y++) {
+    for let x = 0; x < map[y].length; x++) {
+      if (map[y][x] === Tile.LOCK1) {
+        map[y][x] = new Air();
+      }
+    }
+  }
+}
+```
+
+</TabItem>
+<TabItem value="使用方法來檢查">
+
+```
+function removeLock1() {
+  for (let y = 0; y < map.length; y++) {
+    for let x = 0; x < map[y].length; x++) {
+      if (map[y][x].isLock1()) {
+        map[y][x] = new Air();
+      }
+    }
+  }
+}
+```
+
+</TabItem>
+</Tabs>
+
+### 4.2.2 重構模式:特定化方法(SPECIALIZE METHOD)
+
+我們天生希望讓程式碼泛化通用並且能重複使用，但這樣做可能會有問題，因為它會模糊責任的範圍，也表示程式碼可以從各種地方呼叫取用。
+愈專用特定化的方法，被呼叫取用的地方就愈少，這意味著很快就會變得不再使用，反而可以移除掉。
+
+處理步驟
+1. 複製我們想要特定化的方法。
+2. 將其中一個方法重新命名為新的固定名稱，然後刪除(或替換)我們要特定化的參數。
+3. 根據需要修正方法，使其沒有錯誤。
+4. 將舊的呼叫改為使用新的呼叫。
+
+<Tabs>
+<TabItem value="原本的程式碼">
+
+```
+function canMove(start: Tile, end: Tile, dx: number, dy: number)
+{
+  return dx * abs(start.x - end.x)
+     === dy * abs(start.y - end.y)
+      || dy * abs(start.x - end.x)
+     === dx * abs(start.y - end.y);
+}
+/// ...
+  if (canMove(start, end, 1, 0)) // Rook城堡
+/// ...
+  if (canMove(start, end, 1, 1)) // Bishop主教
+/// ...
+  if (canMove(start, end, 1, 2)) // Knight騎士
+/// ...
+```
+
+</TabItem>
+<TabItem value="複製想要特定化的方法">
+
+```
+function canMove(start: Tile, end: Tile, dx: number, dy: number)
+{
+  return dx * abs(start.x - end.x)
+     === dy * abs(start.y - end.y)
+      || dy * abs(start.x - end.x)
+     === dx * abs(start.y - end.y);
+}
+function canMove(start: Tile, end: Tile, dx: number, dy: number)
+{
+  return dx * abs(start.x - end.x)
+     === dy * abs(start.y - end.y)
+      || dy * abs(start.x - end.x)
+     === dx * abs(start.y - end.y);
+}
+```
+
+</TabItem>
+<TabItem value="重新命名為新的固定名稱，然後刪除我們要特定化的參數">
+
+```
+function rookCanMove(start: Tile, end: Tile)
+{
+  return 1 * abs(start.x - end.x)
+     === 0 * abs(start.y - end.y)
+      || 0 * abs(start.x - end.x)
+     === 1 * abs(start.y - end.y);
+}
+```
+
+</TabItem>
+<TabItem value="修正方法，即使沒有錯誤">
+
+```
+function rookCanMove(start: Tile, end: Tile)
+{
+  return abs(start.x - end.x)
+     === 0
+      || 0
+     === abs(start.y - end.y);
+}
+```
+
+</TabItem>
+<TabItem value="修改呼叫方式">
+
+```
+if (rookCanMove(start, end))
+```
+
+</TabItem>
+</Tabs>
+
+### 4.2.3 只能用switch
+
+本來使用enum索引來建立map，在資料庫或檔案中也會使用類似的方式來儲存資料。
+在實務上，通常無法更改現有的外部資料來適應重構的處理。
+不如建立一個新的函式，把我們從enum索引帶到新的類別。
+
+<Tabs>
+<TabItem value="引入transformTile">
+
+```
+let rawMap: RawTile[][] = [
+  [2, 2, 2, 2, 2, 2, 2, 2],
+  [2, 3, 0, 1, 1, 2, 0, 2],
+  [2, 4, 2, 6, 1, 2, 0, 2],
+  [2, 8, 4, 1, 1, 2, 0, 2],
+  [2, 4, 1, 1, 1, 9, 0, 2],
+  [2, 2, 2, 2, 2, 2, 2, 2]
+];
+let map: Tile2[][];
+function assertExhausted(x: never): never {
+  throw new Error("Unexpected object: " + x);
+}
+function transformTile(tile: RawTile) {
+  switch (tile) {
+    case RawTile.AIT: return new Ait();
+    case RawTile.PLAYER: return new Player();
+    case RawTile.UNBREAKABLE: return new Unbreakable();
+    case RawTile.STONE: return new Stone();
+    case RawTile.FALLING_STONE: return new FallingStone();
+    case RawTile.BOX: return new Box();
+    case RawTile.FALLING_BOX: return new FallingBox();
+    case RawTile.FLUX: return new Flux();
+    case RawTile.KEY1: return new Key1();
+    case RawTile.LOCK1: return new Lock1();
+    case RawTile.KEY2: return new Key2();
+    case RawTile.LOCK2: return new Lock2();
+    default: assertExhausted(tile);
+  }
+}
+function transformMap() {
+  map = new Array(rawMap.length);
+  for (let y = 0; y < rawMap.length; y++) {
+    map[y] = new Array(rawMap[y].length);
+    for (let x = 0; x < rawMap[y].length; x++) {
+      map[y][x] = transformTile(rawMap[y][x]);
+    }
+  }
+}
+window.onload = () => {
+  transformMap();
+  gameLoop();
+}
+```
+
+</TabItem>
+</Tabs>
+
+tansformMap符合五行程式碼。但tansformTile違反了五行程式碼，也違反了另一條「NEVER USE switch」
+
+:::info
+在TypeScript中...
+enum(最舉)是代表數字的名稱，例如在C#中，它不像在Java中是個類別。因此，我們不需要在數字和enum之間進行任何轉換，可以直接使用enum索引，就像在之前程式碼中一樣的用法。
+
+:::
+
+### 4.2.4 規則:不要使用switch(NEVER USE switch)
+
+#### 陳述
+除非每種情況都有預設值和返回，否則千萬不要使用switch。
+
+#### 解說
+switch有兩個方便之處，但有副作用
+
+- switch支援default，可能忘記處理新的值，造成新的值落入了default
+- switch有「貫穿邏輯(fall-through logic)」的特性，程式會一直執行所有的case值到遇到break。容易忘記加上break或沒有注意到break。
+
+:::info
+在TypeScript中...
+
+Switch陳述句還是很有用的，因為可以讓編譯器檢查我們是否都映射了所有的enum值。我們需要引入一個「魔法函式」才能實現這項功能，但它是專屬TypeScript的功能，其做法超出了本書的範圍。幸運的是，這個函式永遠不會改變，而這個模式在TypeScript中一直都是有效的。
+:::
+
+#### 異味
+在Martin Fowler的Refactoring中，switch被稱為程式碼異味。
+switch所關注的程式上下脈絡是如何在「這裡」處理值X。
+相反地，把功能推入類別中則是把焦點放在資料，也就是依照這個值(物件)處理情況X。
+只關注於程式上下脈絡所表示的是把「不變性」進一步從其資料中移開，從而讓「不變性」變成全域化。
+
+#### 意圖
+這項規則(NEVER USE switch)有個優雅的附帶作用，可以把switch轉成一連串的else if之後，就能轉換成類別，最後削除if條件式。
+
+
+### 4.2.5 削除if
+
+#### 使用INLINE METHOD
+<Tabs>
+<TabItem value="原本的程式碼">
+
+```
+function colorOfTile(g: CanvasRenderingContext2D, x: number, y: number) {
+  if (map[y][x].isFlux())
+    g.fillStyle = "#ccffcc";
+  else if (map[y][x].isUnbreakable())
+    g.fillStyle = "#999999";
+  else if (map[y][x].isStone() || map[y][x].isFallingStone())
+    g.fillStyle = "#0000cc";
+  else if (map[y][x].isBox() || map[y][x].isFallingBox())
+    g.fillStyle = "#8b4513";
+  else if (map[y][x].isKey1() || map[y][x].isLocak1())
+    g.fillStyle = "#ffcc00";
+  else if (map[y][x].isKey2() || map[y][x].isLock2())
+    g.fillStyle = "#00ccff";
+}
+```
+
+</TabItem>
+<TabItem value="把colorOfTile內聯(INLINE METHOD)成color">
+
+```
+function colorOfTile(g: CanvasRenderingContext2D, x: numebr, y: number)
+{
+  map[y][x].color(g);
+}
+interface Tile {
+  // ...
+  color(g: CanvasRenderingContext2D): void;
+}
+class Air implements Tile {
+  // ...
+  color(g: CanvasRenderingContext2D) {
+
+  }
+}
+class Flux implements Tile {
+  // ...
+  color(g: CanvasRenderingContext2D) {
+    g.fillStyle = "#ccffcc";
+  }
+}
+```
+
+</TabItem>
+</Tabs>
+
+#### 取代本來的colofOfTile
+
+<Tabs>
+<TabItem value="本來的程式碼" default>
+
+```
+function drawMap(g: CanvasRenderingContext2D) {
+  for (let y = 0; y < map.length; y++) {
+    for (let x = 0; x < map[y].length; x++) {
+      colorOfTile(g, x, y);
+      if (!map[y][x].isAir() && !map[y][x].isPlayer())
+        g.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+    }
+  }
+}
+function colorOfTile(g: CanvasRenderingContext2D, x: number, y: number)
+{
+  map[y][x].color(g);
+}
+```
+
+</TabItem>
+<TabItem value="移除colorOfTile">
+
+```
+function drawMap(g: CanvasRenderingContext2D) {
+  for (let y = 0; y < map.length; y++) {
+    for (let x = 0; x < map[y].length; x++) {
+      map[y][x].color(g);
+      if (!map[y][x].isAir() && !map[y][x].isPlayer())
+        g.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+    }
+  }
+}
+
+// ... 移除colorOfTile()
+```
+
+</TabItem>
+</Tabs>
+
+## 4.3 處理程式碼重複的問題
+
+:::info
+如果想要冒一點險，可以跳過提取方法並將它內聯到下面的處理中，直接把程式碼移到類別中。但請確定已經提交過程式嗎。因為在出現問題時可以復原回到這個提交時間點。
+:::
+
+<Tabs>
+<TabItem value="原本的程式碼">
+
+```
+function drawMap(g: CanvasRenderingContext2D) {
+  for (let y = 0; y < map.length; y++) {
+    for (let x = 0; x < map[y].length; x++) {
+      map[y][x].color(g);
+      if (!map[y][x].isAir() && !map[y][x].isPlayer())
+        g.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+    }
+  }
+}
+```
+
+</TabItem>
+<TabItem value="從for迴圈提取">
+
+```
+function drawMap(g: CanvasRenderingContext2D) {
+  for (let y = 0; y < map.length; y++) {
+    for (let x = 0; x < map[y].length; x++) {
+      drawTile(g, x, y)
+    }
+  }
+}
+function drawTile(g: CanvasRenderingContext2D, x: number, y: number)
+{
+  map[y][x].color(g);
+  if (!map[y][x].isAir() && !map[y][x].isPlayer())
+    g.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+}
+```
+
+</TabItem>
+<TabItem value="把程式碼移到類別中">
+
+```
+function drawTile(g: CanvasRenderingContext2D, x: number, y: number)
+{
+  map[y][x].draw(g, x, y);
+  if (!map[y][x].isAir() && !map[y][x].isPlayer())
+    g.fillRect(
+      x * TILE_SIZE,
+      y * TILE_SIZE,
+      TILE_SIZE,
+      TILE_SIZE);
+}
+interface Tile {
+  // ...
+  draw(g: CanvasRenderingContext2D, x: number, y: number): void;
+}
+class Air implements Tile {
+  // ...
+  draw(g: CanvasRenderingContext2D, x: number, y: number)
+  {
+    // empty method
+  }
+}
+class Flux implements Tile {
+  // ...
+  draw(g: CanvasRenderingContext2D, x: number, y: number)
+  {
+    g.fillStyle = "#ccffcc";
+    g.fillRect(
+      x * TILE_SIZE,
+      y * TILE_SIZE,
+      TILE_SIZE,
+      TILE_SIZE);
+  }
+}
+```
+
+</TabItem>
+</Tabs>
+
+最後整理如下
+<Tabs>
+<TabItem value="本來的程式碼" default>
+
+```
+function drawMap(g: CanvasRenderingContext2D) {
+  for (let y = 0; y < map.length; y++) {
+    for (let x = 0; x < map[y].length; x++) {
+      drawTile(g, x, y)
+    }
+  }
+}
+function drawTile(g: CanvasRenderingContext2D, x: number, y: number)
+{
+  map[y][x].draw(g);
+}
+```
+
+</TabItem>
+<TabItem value="">
+
+```
+function drawMap(g: CanvasRenderingContext2D) {
+  for (let y = 0; y < map.length; y++) {
+    for (let x = 0; x < map[y].length; x++) {
+      map[y][x].draw(g, x, y);
+      drawTile(g, x, y)
+    }
+  }
+}
+// 移除drawTile()
+```
+
+</TabItem>
+</Tabs>
+
+### 4.3.1 不能使用抽象類別來代替介面嗎？
+
+可以，這可以避免程式碼重複。
+介面會強制我們為每個新的類別進行主動操作。不會意外忘記某個屬性或覆寫了不應該覆寫的東西。
+在寫完程式六個月後最為麻煩，當忘掉了程式是怎麼運作時，可能需要回來新增一個tile型別
+
+### 4.3.2 規則:只能從介面來繼承(ONLY INHERIT FROM INTERFACES)
+
+#### 陳述
+只能從介面來繼承
+
+#### 解說
+只能從介面繼承，而不能從類別或抽象類別來繼承。
+如此可以減少程式碼的重複。
+抽象類別提供的預設實作，程式碼共用可能會導致耦合。
+
+#### 異味
+這項規則是從Design Pattern一書中的「優先使用物件組合而非繼承」演化而來。
+
+#### 意圖
+應該透過參照其他物件來分享程式碼，而不是用繼承的方式。
+
+### 4.3.3 重複的程式碼是怎麼一回事？
+
+## 4.4 重構一對複雜的if陳述句
+
+<Tabs>
+<TabItem value="原本的程式">
+
+```
+function moveHorizontal(dx: number) {
+  if (map[player][playerx + dx].isFlux()
+          || map[playery][playerx + dx].isAir())
+    moveToTile(playerx + dx, playery);
+  } else if ((map[playery][playerx + dx].isStone()
+          || map[playery][playerx + dx].isBox())
+          && map[palyery][playerx + dx + dx].isAir()
+          && !map[playery + 1][playerx + dx].isAir()) {
+    map[playery][playerx + dx + dx] = map[playerx][playerx + dx];
+    moveToTile(playerx + dx, playery);
+  } else if (map[playery][playerx + dx].isKey1()) {
+    removeLock1();
+    moveToTile(playerx + dx, playery);
+  } else if (map[playery][playerx + dx].isKey2()) {
+    removeLock2();
+    moveToTile(playerx + dx, playery);
+  }
+}
+```
+
+</TabItem>
+<TabItem value="新增isEdible/isPushable介面">
+
+```
+function moveHorizontal(dx: number) {
+  if (map[player][playerx + dx].isEdible())
+    moveToTile(playerx + dx, playery);
+  } else if ((map[playery][playerx + dx].isPushable())
+          && map[palyery][playerx + dx + dx].isAir()
+          && !map[playery + 1][playerx + dx].isAir()) {
+    map[playery][playerx + dx + dx] = map[playerx][playerx + dx];
+    moveToTile(playerx + dx, playery);
+  } else if (map[playery][playerx + dx].isKey1()) {
+    removeLock1();
+    moveToTile(playerx + dx, playery);
+  } else if (map[playery][playerx + dx].isKey2()) {
+    removeLock2();
+    moveToTile(playerx + dx, playery);
+  }
+  interface Tile {
+    // ...
+    isEdible(): boolean;
+    isPushable(): boolean;
+  }
+  class Box implements Tile {
+    // ...
+    isEdible() { return false; }
+    isPushable() { return true; }
+  }
+  class Air implements Tile {
+    // ...
+    isEdible() { return true; }
+    isPushable() { return false; }
+  }
+}
+```
+
+</TabItem>
+<TabItem value="把程式碼移到類別中之後的程式碼">
+
+```
+function moveHorizontal(dx: number) {
+  map[playery][playerx + dx].moveHorizontal(dx);
+}
+interface Tile {
+  // ...
+  moveHorizontal(dx: number): void;
+}
+class Box implements Tile {
+  // ...
+  moveHorizontal(dx: number) {
+    if (map[playery][playerx + dx + dx].isAir()
+        && !map[playery + 1][playerx + dx].isAir()) {
+      map[playery][playerx + dx + dx] = this;
+      moveToTile(playerx + dx, playery);
+    }
+  }
+}
+class Key1 implements Tile {
+  // ...
+  moveHorizontal(dx: number) {
+    removeLock1();
+    moveToTile(playerx + dx, playery);
+  }
+}
+class Lock1 implements Tile {
+  // ...
+  moveHorizontal(dx: number) { }
+}
+class Air implements Tile {
+  // ...
+  moveHorizontal(playerx + dx, playery);
+}
+```
+
+</TabItem>
+</Tabs>
+
+## 4.5 移除無用的程式碼
+
+由於介面都是公開的，沒有IDE能告知介面中的方法是否有被使用。
+有可能是未來使用，或許也可能被外部範圍的某些程式使用。
+一般情況下，無法輕易從介面中刪除方法。
+
+### 4.5.1 重構模式:刪除後再編譯(TRY DELETE THEN COMPILE)
+
+處理步驟
+1. 編譯。沒有錯誤。
+2. 從介面中刪除方法。
+3. 編譯。
+
+    a. 如果編譯後出現錯誤，請復原，然後再繼續。
+
+    b. 如果編譯後無錯誤，請逐一檢查每個類別，看看是否能繼續刪除相同的方法且編譯不出現錯誤。
+
+範例
+
+<Tabs>
+<TabItem value="原本的程式">
+
+```
+interface A {
+  m1(): void;
+  m2(): void;
+}
+class B implements A {
+  m1() { console.log("m1"); }
+  m2() { this.m3(); }
+  m3() { console.log("m3"); }
+}
+let a = new B();
+a.m1();
+```
+
+</TabItem>
+</Tabs>
+
+## 總結
