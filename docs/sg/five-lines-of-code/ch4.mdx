@@ -1443,7 +1443,7 @@ function assertExhausted(x: never): never {
 }
 function transformTile(tile: RawTile) {
   switch (tile) {
-    case RawTile.AIT: return new Ait();
+    case RawTile.AIR: return new Air();
     case RawTile.PLAYER: return new Player();
     case RawTile.UNBREAKABLE: return new Unbreakable();
     case RawTile.STONE: return new Stone();
@@ -1488,6 +1488,8 @@ enum(最舉)是代表數字的名稱，例如在C#中，它不像在Java中是�
 
 #### 陳述
 除非每種情況都有預設值和返回，否則千萬不要使用switch。
+
+(Never use switch unless you have no default and return in every case)
 
 #### 解說
 switch有兩個方便之處，但有副作用
