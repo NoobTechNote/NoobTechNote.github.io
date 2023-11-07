@@ -1,0 +1,612 @@
+---
+title: "Ch5: 把相似的程式碼統合在一起"
+sidebar_label: "Ch5: 把相似的程式碼統合在一起"
+sidebar_position: 5
+---
+
+import Tabs from "@theme/Tabs";
+import TabItem from "@theme/TabItem";
+
+## 5.1 Unifying Similar classes
+接續上一章，updateTile依然違反了許多規則，最顯著的就是"不要讓IF跟ELSE一起用"規則
+引入isStony, isBoxy，可被理解為，像石頭一樣做動，像箱子一樣做動
+<table>
+<tr>
+<td>
+Before
+
+```typescript
+function updateTile(x: number, y: number) {
+  if ((map[y][x].isStone() || map[y][x].isFallingStone())
+    && map[y + 1][x].isAir()) {
+    map[y + 1][x] = new FallingStone();
+    map[y][x] = new Air();
+  } else if ((map[y][x].isBox() || map[y][x].isFallingBox())
+    && map[y + 1][x].isAir()) {
+    map[y + 1][x] = new FallingBox();
+    map[y][x] = new Air();
+  } else if (map[y][x].isFallingStone()) {
+    map[y][x] = new Stone();
+  } else if (map[y][x].isFallingBox()) {
+    map[y][x] = new Box();
+  }
+}
+```
+</td>
+<td>
+After
+
+```typescript
+function updateTile(x: number, y: number) {
+  if (map[y][x].isStony()
+    && map[y + 1][x].isAir()) {
+    map[y + 1][x] = new FallingStone();
+    map[y][x] = new Air();
+  } else if (map[y][x].isBoxy()
+    && map[y + 1][x].isAir()) {
+    map[y + 1][x] = new FallingBox();
+    map[y][x] = new Air();
+  } else if (map[y][x].isFallingStone()) {
+    map[y][x] = new Stone();
+  } else if (map[y][x].isFallingBox()) {
+    map[y][x] = new Box();
+  }
+}
+interface Tile {
+  // ...
+  isStony(): boolean;
+  isBoxy(): boolean;
+}
+class Air implements Tile {
+  // ...
+  isStony() { return false; }
+  isBoxy() { return false; }
+}
+```
+</td>
+</tr>
+</table>
+回傳一個常數的method我們叫constant method(常數方法)
+
+我們可以合併兩個class是因為這兩個class共享了回傳不同常數的常數方法
+
+Steps:
+1. 讓兩個class除了常數方法以外都相等
+
+2. 合併class
+(書上說很像分數加法，要先把分母變一樣再加起來)
+
+先比較兩顆石頭類
+
+<table>
+<tr>
+<td>
+Stone
+
+```typescript
+class Stone implements Tile {
+  isAir() { return false; }
+  isFallingStone() { return false; }
+  isFallingBox() { return false; }
+  isLock1() { return false; }
+  isLock2() { return false; }
+  draw(g: CanvasRenderingContext2D,
+    x: number, y: number) {
+    // ...
+  }
+  moveVertical(dy: number) { }
+  isStony() { return true; }
+  isBoxy() { return false; }
+  moveHorizontal(dx: number) {
+    // ...
+  }
+}
+```
+</td>
+<td>
+FallingStone
+
+```typescript
+class FallingStone implements Tile {
+  isAir() { return false; }
+  isFallingStone() { return true; }
+  isFallingBox() { return false; }
+  isLock1() { return false; }
+  isLock2() { return false; }
+  draw(g: CanvasRenderingContext2D,
+    x: number, y: number) {
+    // ...
+  }
+  moveVertical(dy: number) { }
+  isStony() { return true; }
+  isBoxy() { return false; }
+  moveHorizontal(dx: number) {
+  }
+}
+```
+</td>
+</tr>
+</table>
+
+<Tabs>
+<TabItem value="把moveHorizontal一樣" default>
+
+```typescript
+class Stone implements Tile {
+  // ...
+  moveHorizontal(dx: number) {
+    if (map[playery][playerx + dx + dx].isAir()
+      && !map[playery + 1][playerx + dx].isAir()) {
+      map[playery][playerx + dx + dx] = this;
+      moveToTile(playerx + dx, playery);
+    }
+  }
+}
+class FallingStone implements Tile {
+  // ...
+  moveHorizontal(dx: number) {
+  }
+}
+```
+
+</TabItem>
+<TabItem value="用if(true){}包起來">
+
+```typescript
+class Stone implements Tile {
+  // ...
+  moveHorizontal(dx: number) {
+    if (true) {
+      if (map[playery][playerx + dx + dx].isAir()
+        && !map[playery + 1][playerx + dx].isAir()) {
+        map[playery][playerx + dx + dx] = this;
+        moveToTile(playerx + dx, playery);
+      }
+    }
+  }
+}
+class FallingStone implements Tile {
+  // ...
+  moveHorizontal(dx: number) {
+    if (true) { }
+  }
+}
+```
+</TabItem>
+<TabItem value="個別加上condition">
+
+```typescript
+
+class Stone implements Tile {
+  // ...
+  moveHorizontal(dx: number) {
+    if (this.isFallingStone() === false) {
+      if (map[playery][playerx + dx + dx].isAir()
+        && !map[playery + 1][playerx + dx].isAir()) {
+        map[playery][playerx + dx + dx] = this;
+        moveToTile(playerx + dx, playery);
+      }
+    }
+  }
+}
+class FallingStone implements Tile {
+  // ...
+  moveHorizontal(dx: number) {
+    if (this.isFallingStone() === true) { }
+  }
+}
+```
+</TabItem>
+<TabItem value="把各自缺的部份，補到對方去，這樣除了constant method之外都一樣了">
+
+```typescript
+class Stone implements Tile {
+  // ...
+  moveHorizontal(dx: number) {
+    if (this.isFallingStone() === false) {
+      if (map[playery][playerx + dx + dx].isAir()
+        && !map[playery + 1][playerx + dx].isAir()) {
+        map[playery][playerx + dx + dx] = this;
+        moveToTile(playerx + dx, playery);
+      }
+    }
+    else if (this.isFallingStone() === true) {
+    }
+  }
+}
+class FallingStone implements Tile {
+  // ...
+  moveHorizontal(dx: number) {
+    if (this.isFallingStone() === false) {
+      if (map[playery][playerx + dx + dx].isAir()
+        && !map[playery + 1][playerx + dx].isAir()) {
+        map[playery][playerx + dx + dx] = this;
+        moveToTile(playerx + dx, playery);
+      }
+    }
+    else if (this.isFallingStone() === true) {
+    }
+  }
+}
+```
+</TabItem>
+</Tabs>
+
+
+<Tabs>
+
+<TabItem value="接下來引入falling field" default>
+
+```typescript
+class Stone implements Tile {
+  // ...
+  isFallingStone() { return false; }
+}
+class FallingStone implements Tile {
+  // ...
+  isFallingStone() { return true; }
+}
+```
+
+</TabItem>
+
+<TabItem value="在constructor給falling賦值">
+
+```typescript
+class Stone implements Tile {
+  private falling: boolean;
+  constructor() {
+    this.falling = false;
+  }
+  // ...
+  isFallingStone() { return false; }
+}
+class FallingStone implements Tile {
+  private falling: boolean;
+  constructor() {
+    this.falling = true;
+  }
+  // ...
+  isFallingStone()
+```
+
+</TabItem>
+
+<TabItem value="修改isFallingStone">
+
+```typescript
+class Stone implements Tile {
+  // ...
+  isFallingStone() { return false; }
+}
+class FallingStone implements Tile {
+  // ...
+  isFallingStone() { return true; }
+}
+```
+
+</TabItem>
+
+<TabItem value="改成回傳falling field">
+
+```typescript
+class Stone implements Tile {
+  // ...
+  isFallingStone() { return this.falling; }
+}
+class FallingStone implements Tile {
+  // ...
+  isFallingStone() { return this.falling; }
+}
+```
+
+</TabItem>
+
+<TabItem value="在constructor吃入參數">
+
+```typescript
+class Stone implements Tile {
+  private falling: boolean;
+  constructor(falling: boolean) {
+    this.falling = falling;
+  }
+  // ...
+}
+```
+
+</TabItem>
+
+</Tabs>
+
+
+<Tabs>
+<TabItem value="接下來compiler會報錯" default>
+
+```typescript
+/// ...
+new Stone();
+/// ...
+
+/// ...
+new FallingStone(true);
+/// ...
+
+```
+
+</TabItem>
+
+<TabItem value="修好他" default>
+
+```typescript
+/// ...
+new Stone(false);
+/// ...
+
+/// ...
+new Stone(true);
+/// ...
+
+```
+
+</TabItem>
+
+
+</Tabs>
+
+<Tabs>
+<TabItem value="Before">
+
+```typescript
+function updateTile(x: number, y: number) {
+  if (map[y][x].isStony()
+    && map[y + 1][x].isAir()) {
+    map[y + 1][x] = new FallingStone();
+    map[y][x] = new Air();
+  } else if (map[y][x].isBoxy()
+    && map[y + 1][x].isAir()) {
+    map[y + 1][x] = new FallingBox();
+    map[y][x] = new Air();
+  } else if (map[y][x].isFallingStone()) {
+    map[y][x] = new Stone();
+  } else if (map[y][x].isFallingBox()) {
+    map[y][x] = new Box();
+  }
+}
+class Stone implements Tile {
+  // ...
+  isFallingStone() { return false; }
+  moveHorizontal(dx: number) {
+    if (map[playery][playerx + dx + dx].isAir()
+      && !map[playery + 1][playerx + dx].isAir()) {
+      map[playery][playerx + dx + dx] = this;
+      moveToTile(playerx + dx, playery);
+    }
+  }
+}
+class FallingStone implements Tile {
+  // ...
+  isFallingStone() { return true; }
+  moveHorizontal(dx: number) { }
+}
+```
+
+</TabItem>
+
+<TabItem value="After">
+
+```typescript
+function updateTile(x: number, y: number) {
+  if (map[y][x].isStony()
+    && map[y + 1][x].isAir()) {
+    map[y + 1][x] = new Stone(true);
+    map[y][x] = new Air();
+  } else if (map[y][x].isBoxy()
+    && map[y + 1][x].isAir()) {
+    map[y + 1][x] = new FallingBox();
+    map[y][x] = new Air();
+  } else if (map[y][x].isFallingStone()) {
+    map[y][x] = new Stone(false);
+  } else if (map[y][x].isFallingBox()) {
+    map[y][x] = new Box();
+  }
+}
+class Stone implements Tile {
+  constructor(private falling: boolean) { }
+  // ...
+  isFallingStone() { return this.falling; }
+  moveHorizontal(dx: number) {
+    if (this.isFallingStone() === false) {
+      if (map[playery][playerx + dx + dx].isAir()
+        && !map[playery + 1][playerx + dx].isAir()) {
+        map[playery][playerx + dx + dx] = this;
+        moveToTile(playerx + dx, playery);
+      }
+    } else if (this.isFallingStone() === true) {
+    }
+  }
+}
+```
+
+</TabItem>
+
+</Tabs>
+
+:::info
+In TypeScript …
+Constructors behave a little differently than in most languages. First, we can have only one
+constructor, and it is always called constructor.
+Second, putting public or private in front of a parameter to the constructor automatically
+makes an instance variable and assigns it the value of the argument. So the following are
+equivalent.
+
+```typescript
+class Stone implements Tile {
+  private falling: boolean;
+  constructor(falling: boolean) {
+    this.falling = falling;
+  }
+}
+```
+
+```typescript
+class Stone implements Tile {
+constructor(
+private falling: boolean) { }
+}
+```
+
+:::
+
+回頭看一下發現moveHorizontal有if搭配else，是不是又想起哪幾招...
+
+當把falling變成type code，就可以使出連續技 -> into enum type -> Replace type code with classes -> push code into classes
+
+
+<Tabs>
+<TabItem value="Before">
+
+```typescript
+/// ...
+new Stone(true);
+/// ...
+new Stone(false);
+/// ...
+class Stone implements Tile {
+  constructor(private falling: boolean) { }
+  // ...
+  isFallingStone() {
+    return this.falling;
+  }
+}
+```
+
+</TabItem>
+
+<TabItem value="轉成enum">
+
+```typescript
+enum FallingState {
+  FALLING, RESTING
+}
+/// ...
+new Stone(FallingState.FALLING);
+/// ...
+new Stone(FallingState.RESTING);
+/// ...
+class Stone implements Tile {
+  constructor(private falling: FallingState) { }
+  // ...
+  isFallingStone() {
+    return this.falling
+      === FallingState.FALLING;
+  }
+}
+```
+
+</TabItem>
+
+<TabItem value="Replace Type Code with Classes">
+
+```typescript
+interface FallingState {
+  isFalling(): boolean;
+  isResting(): boolean;
+}
+class Falling implements FallingState {
+  isFalling() { return true; }
+  isResting() { return false; }
+}
+class Resting implements FallingState {
+  isFalling() { return false; }
+  isResting() { return true; }
+}
+new Stone(new Falling());
+new Stone(new Resting());
+class Stone implements Tile {
+  constructor(private falling:
+    FallingState) { }
+  // ...
+  isFallingStone() {
+    return this.falling.isFalling();
+  }
+}
+```
+
+</TabItem>
+
+<TabItem value="發起push code into classes招數">
+
+```typescript
+
+interface FallingState {
+  // ...
+  moveHorizontal(
+    tile: Tile, dx: number): void;
+}
+class Falling implements FallingState {
+  // ...
+  moveHorizontal(tile: Tile, dx: number) {
+  }
+```
+
+</TabItem>
+
+<TabItem value="把funciton通通塞進class，然後調整condition">
+
+```typescript
+class Resting implements FallingState {
+  // ...
+  moveHorizontal(tile: Tile, dx: number) {
+    if (map[playery][playerx + dx + dx].isAir()
+      && !map[playery + 1][playerx + dx].isAir()) {
+      map[playery][playerx + dx + dx] = tile;
+      moveToTile(playerx + dx, playery);
+    }
+  }
+}
+class Stone implements Tile {
+  // ...
+  moveHorizontal(dx: number) {
+    this.falling.moveHorizontal(this, dx);
+  }
+}
+```
+
+</TabItem>
+</Tabs>
+
+### 5.1.1 重構模式: Unify Similar Classes
+描述：
+
+當有兩個或多個class，只差在constant method，可以服用此藥方去整合他們
+
+Unifying classes is great because having fewer classes usually
+means we uncover more structure.
+
+程序
+
+1. The first phase is to make all the non-basis methods equal. For each of these
+methods, perform these steps:
+
+  a. In the body of each version of the method, add an enclosing if (true) { }
+around the existing code.
+
+  b. Replace true with an expression calling all the basis methods and comparing
+their result to their constant values.
+
+  c. Copy the body of each version, and paste it with an else into all the other
+versions.
+2. Now that only the basis methods are different, the second phase begins by
+introducing a field for each method in the basis and assigning its constant in
+the constructor.
+3. Change the methods to return the new fields instead of the constants.
+4. Compile to ensure that we have not broken anything yet.
+5. For each class, one field at a time:
+
+a Copy the default value of the field, and then make the default value a
+parameter.
+
+b Go through the compiler errors, and insert the default value as an argument.
+
+6 After all the classes are identical, delete all but one of the unified classes, and
+fix all the compile errors by switching to the remaining class.
