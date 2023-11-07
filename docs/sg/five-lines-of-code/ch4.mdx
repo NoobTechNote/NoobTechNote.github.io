@@ -1707,7 +1707,7 @@ function drawTile(g: CanvasRenderingContext2D, x: number, y: number)
 ```
 
 </TabItem>
-<TabItem value="">
+<TabItem value="移除drawTile">
 
 ```
 function drawMap(g: CanvasRenderingContext2D) {
@@ -1747,6 +1747,11 @@ function drawMap(g: CanvasRenderingContext2D) {
 應該透過參照其他物件來分享程式碼，而不是用繼承的方式。
 
 ### 4.3.3 重複的程式碼是怎麼一回事？
+
+很多情況下，重複的程式碼是不好的。但是要思考一下為什麼會有這樣的情況發生？若修改到重複部份，則需要在整支程式中找出所有重複的內容來修，是很不好的。
+
+如果程式中有重複的程式碼，而我們只在其中一處進行了更改，那就變成有了兩種不同的功用。程式碼的重複是不好的，因為這種做法會鼓勵程式碼產生分歧。
+
 
 ## 4.4 重構一對複雜的if陳述句
 
@@ -1892,3 +1897,8 @@ a.m1();
 </Tabs>
 
 ## 總結
+
+- 「NEVER USE if WITH else」和「NEVER USE switch」這兩規則表示，應該只在程式的外圍使用else或switch。else和switch都屬於低層級的控制流程運算子。應該使用「REPLACE TYPE CODE WITH CLASSES」和「PUSH CODE INTO CLASSES」來替換。
+- 過於泛用化的方法會阻礙重構進行。使用「SPECIALIZED METHOD」
+- 「ONLY INHERIT FROM INTERFACES」禁止使用抽象類別和類別繼承來重用程式碼，因為會導致不必要的緊密耦合。
+- 「INLINE METHOD」及「TRY DELETE THEN COMPILE」可以在重構後清理程式碼。
