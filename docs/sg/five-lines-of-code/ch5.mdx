@@ -8,14 +8,14 @@ import Tabs from "@theme/Tabs";
 import TabItem from "@theme/TabItem";
 
 ## 5.1 Unifying Similar classes
+
 接續上一章，updateTile依然違反了許多規則，最顯著的就是"不要讓IF跟ELSE一起用"規則
 引入isStony, isBoxy，可被理解為，像石頭一樣做動，像箱子一樣做動
-<table>
-<tr>
-<td>
-Before
 
-```typescript
+
+<MultiCol col={2}>
+
+```typescript title="Before"
 function updateTile(x: number, y: number) {
   if ((map[y][x].isStone() || map[y][x].isFallingStone())
     && map[y + 1][x].isAir()) {
@@ -32,11 +32,11 @@ function updateTile(x: number, y: number) {
   }
 }
 ```
-</td>
-<td>
-After
 
-```typescript
+</MultiCol>
+<MultiCol col={2}>
+
+```typescript title="After"
 function updateTile(x: number, y: number) {
   if (map[y][x].isStony()
     && map[y + 1][x].isAir()) {
@@ -63,9 +63,9 @@ class Air implements Tile {
   isBoxy() { return false; }
 }
 ```
-</td>
-</tr>
-</table>
+
+</MultiCol>
+
 回傳一個常數的method我們叫constant method(常數方法)
 
 我們可以合併兩個class是因為這兩個class共享了回傳不同常數的常數方法
@@ -78,12 +78,11 @@ Steps:
 
 先比較兩顆石頭類
 
-<table>
-<tr>
-<td>
-Stone
+<MultiCol col={2}>
 
-```typescript
+
+```typescript title="Stone"
+
 class Stone implements Tile {
   isAir() { return false; }
   isFallingStone() { return false; }
@@ -102,11 +101,12 @@ class Stone implements Tile {
   }
 }
 ```
-</td>
-<td>
-FallingStone
 
-```typescript
+</MultiCol>
+
+<MultiCol col={2}>
+
+```typescript title="FallingStone"
 class FallingStone implements Tile {
   isAir() { return false; }
   isFallingStone() { return true; }
@@ -124,9 +124,7 @@ class FallingStone implements Tile {
   }
 }
 ```
-</td>
-</tr>
-</table>
+</MultiCol>
 
 <Tabs>
 <TabItem value="把moveHorizontal一樣" default>
