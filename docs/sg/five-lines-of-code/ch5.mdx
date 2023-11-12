@@ -13,7 +13,8 @@ import TabItem from "@theme/TabItem";
 引入isStony, isBoxy，可被理解為，像石頭一樣做動，像箱子一樣做動
 
 
-<MultiCol col={2}>
+<Row>
+<Col col={2}>
 
 ```typescript title="Before"
 function updateTile(x: number, y: number) {
@@ -33,8 +34,8 @@ function updateTile(x: number, y: number) {
 }
 ```
 
-</MultiCol>
-<MultiCol col={2}>
+</Col>
+<Col col={2}>
 
 ```typescript title="After"
 function updateTile(x: number, y: number) {
@@ -64,7 +65,8 @@ class Air implements Tile {
 }
 ```
 
-</MultiCol>
+</Col>
+</Row>
 
 回傳一個常數的method我們叫constant method(常數方法)
 
@@ -78,8 +80,8 @@ Steps:
 
 先比較兩顆石頭類
 
-<MultiCol col={2}>
-
+<Row>
+<Col col={2}>
 
 ```typescript title="Stone"
 
@@ -102,9 +104,9 @@ class Stone implements Tile {
 }
 ```
 
-</MultiCol>
+</Col>
 
-<MultiCol col={2}>
+<Col col={2}>
 
 ```typescript title="FallingStone"
 class FallingStone implements Tile {
@@ -124,7 +126,10 @@ class FallingStone implements Tile {
   }
 }
 ```
-</MultiCol>
+
+</Col>
+
+</Row>
 
 <Tabs>
 <TabItem value="把moveHorizontal一樣" default>
@@ -608,3 +613,89 @@ b Go through the compiler errors, and insert the default value as an argument.
 
 6 After all the classes are identical, delete all but one of the unified classes, and
 fix all the compile errors by switching to the remaining class.
+
+
+## 5.4 跨類別統合程式碼
+
+
+<Row>
+<Col col={2}>
+
+```typescript title="updateTile (Before)"
+function updateTile(x: number, y: number) {
+  if (map[y][x].canFall()
+    && map[y + 1][x].isAir()) {
+    map[y][x].drop();
+    map[y + 1][x] = map[y][x];
+    map[y][x] = new Air();
+  } else if (map[y][x].isFalling()) {
+    map[y][x].rest();
+  }
+}
+```
+
+</Col>
+
+<Col col={2}>
+
+```typescript title="updateTile (After)"
+function updateTile(x: number, y: number) {
+  map[y][x].update(x, y)
+}
+
+interface Tile {
+  update(x: number, y: number): void;
+}
+
+class Air implements Tile {
+  update(x: number, y: number): {
+    // 空氣磚不需要對「掉落」有反應
+  };
+}
+
+class Stone implements Tile {
+  update(x: number, y: number): {
+    if (map[y+1][x].isAir()) {
+      // 掉落中
+      this.falling = new Falling();
+      map[y+1][x] = this;
+      map[y][x] = new Air();
+    } else if (this.falling.isFalling()) {
+      // 到底了
+      this.falling = new Resting();
+    }
+  };
+}
+```
+
+</Col>
+</Row>
+
+:::info
+從本來在「環境」判斷所來「何人」；改成在「角色」裡，判斷所處環境決定其行為
+:::
+
+* Stone和Air都implement自Tile interface
+  * 即：Stone和Air都是一種Tile的實現
+
+```mermaid
+classDiagram
+  class Tile
+    Tile: isFalling
+    Tile: update()
+
+  class Stone
+    Stone: isFalling
+    Stone: update()
+
+  class Air
+    Air: isFalling
+    Air: update()
+
+  Tile <|-- Stone
+  Tile <|-- Air
+```
+
+## 5.5 統合相同的函式
+
+## 5.6 統合相似的程式碼
