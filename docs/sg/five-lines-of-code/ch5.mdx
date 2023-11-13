@@ -615,13 +615,18 @@ b Go through the compiler errors, and insert the default value as an argument.
 fix all the compile errors by switching to the remaining class.
 
 
+<hr/>
+
 ## 5.4 跨類別統合程式碼
 
+### Step1. 將行為放進Class
 
 <Row>
 <Col col={2}>
 
 ```typescript title="updateTile (Before)"
+// 在更新磚塊的動作中，如果磚塊可以掉落做「掉落」
+
 function updateTile(x: number, y: number) {
   if (map[y][x].canFall()
     && map[y + 1][x].isAir()) {
@@ -639,6 +644,8 @@ function updateTile(x: number, y: number) {
 <Col col={2}>
 
 ```typescript title="updateTile (After)"
+// 在磚塊的「更新」動作中，如果能掉落執行「掉落」
+
 function updateTile(x: number, y: number) {
   map[y][x].update(x, y)
 }
@@ -672,30 +679,359 @@ class Stone implements Tile {
 </Row>
 
 :::info
-從本來在「環境」判斷所來「何人」；改成在「角色」裡，判斷所處環境決定其行為
+從本來在「環境」判斷所來「何人」對其進行對應動作；改成在「角色」裡，判斷所處環境決定其行為
 :::
 
 * Stone和Air都implement自Tile interface
-  * 即：Stone和Air都是一種Tile的實現
+  * 即：Stone和Air都是一種Tile
 
 ```mermaid
 classDiagram
   class Tile
-    Tile: isFalling
+    Tile: falling
     Tile: update()
 
   class Stone
-    Stone: isFalling
+    Stone: falling
     Stone: update()
 
-  class Air
-    Air: isFalling
-    Air: update()
+  class Box
+    Box: falling
+    Box: update()
 
   Tile <|-- Stone
-  Tile <|-- Air
+  Tile <|-- Box
 ```
+
+### Step2. 抽取「策略」
+
+<Row>
+<Col col={2}>
+
+#### Problems：
+
+* isOOO幾乎被移除了
+* Stone和Box有完全相同的程式碼: falling
+* 有可能有新的Tile需要implement
+
+</Col>
+<Col col={2}>
+
+#### Solution:
+
+* 將falling視為一種「策略」
+
+</Col>
+</Row>
+
+<Row>
+<Col col={2}>
+
+```typescript title="Before"
+class Stone implements Tile {
+  update(x: number, y: number) {
+    if (map[y+1][x].isAir()) {
+     this.falling = new Failing()
+     map[y+1][x] = this
+     map[y][x] = new Air()
+    } else if (this.falling.isFalling()) {
+     this.falling = new Resting()
+    }
+  }
+}
+
+
+class Box implements Tile {
+  update(x: number, y: number) {
+    if (map[y+1][x].isAir()) {
+     this.falling = new Failing()
+     map[y+1][x] = this
+     map[y][x] = new Air()
+    } else if (this.falling.isFalling()) {
+     this.falling = new Resting()
+    }
+  }
+}
+```
+
+</Col>
+<Col col={2}>
+
+```typescript title="After"
+class FallingStrategy {
+  update(tile, x: number, y: number) {
+    if (map[y+1][x].isAir()) {
+     this.falling = new Failing();
+     map[y+1][x] = tile;
+     map[y][x] = new Air();
+    } else if (this.falling.isFalling()) {
+     this.falling = new Resting()
+    }
+  }
+}
+
+class Stone implements Tile {
+  constructor(strategy: FallingStrategy)
+  update(x: number, y: number) {
+    this.strategy.update(this, x, y)
+  }
+}
+class Box implements Tile {
+  constructor(strategy: FallingStrategy)
+  update(x: number, y: number) {
+    this.strategy.update(this, x, y)
+  }
+}
+```
+
+</Col>
+</Row>
+
+```mermaid
+classDiagram
+  class Tile
+    Tile: falling
+    Tile: update()
+
+  class Stone
+    Stone: falling
+
+  class Box
+    Box: falling
+
+  Tile <|-- Stone
+  Tile <|-- Box
+
+  class FallingStrategy
+    FallingStrategy: update()
+
+  Box --* FallingStrategy
+  Stone --* FallingStrategy
+```
+
+
+### Step3. 僅在開頭使用if
+
+<Row>
+<Col col={2}>
+
+```typescript title="[Simplify] Before"
+class FallingStrategy {
+  update(x: number, y: number) {
+    if (map[y+1][x].isAir()) {
+     this.falling = new Failing()
+     map[y+1][x] = this
+     map[y][x] = new Air()
+    } else if (this.falling.isFalling()) {
+     this.falling = new Resting()
+    }
+  }
+}
+
+```
+
+</Col>
+<Col col={2}>
+
+```typescript title="[Simplify] After"
+class FallingStrategy {
+  private drop(tile, x, y) {
+    map[y+1][x] = tile;
+    map[y][x] = new Air()
+  }
+  update(x: number, y: number) {
+    this.falling = (map[y+1][x].isAir())
+      ? new Falling()
+      : new Resting();
+    this.drop(tile, x, y)
+  }
+}
+```
+
+</Col>
+</Row>
+
+:::info
+以上這三個步驟，稱為「引入策略模式」
+:::
+
+### 策略模式Strategy Pattern
+
+<Row>
+<Col col={2}>
+
+* 很多模式都是策略模式的變形
+  * 若Strategy有attribute (variable而不是function)<br/>會被稱為狀態模式State Pattern
+* 變異(Variance)是策略模式的目的
+* 使用策略模式的情境
+  1. 希望在程式碼中引入「變異」
+  2. 希望在各個class間統合行為
+
+</Col>
+<Col col={2}>
+
+```mermaid
+classDiagram
+
+class Context
+
+class Strategy
+  Strategy: exec()
+
+ConcreteStrategyA
+ConcreteStrategyB
+
+ Context *-- Strategy
+Strategy <|-- ConcreteStrategyA
+Strategy <|-- ConcreteStrategyB
+```
+
+</Col>
+</Row>
+
+### 規則：「不要讓介面只有一個實作」
+
+* 只有一個實作的介面並不會增加可讀性
+* 「介面」代表的是有變化；如果沒有變化，抽取介面會徒增心智的負擔
+
+:::tip
+抽象化增加了真正的複雜性，但減少了感知的複雜性
+
+Abstraction trades an increase in real complexity for a decrease in perceived complexity
+:::
+
+### 規則：「從實作提取介面」
+
+* 將「抽取介面」延遲到真正需要的時候才進行
+  * 例如，想引入變異(Variance)的時候
+
+<Row>
+<Col col={2}>
+
+```typescript title="Before"
+class ArraySum {
+  private processor: SumProcessor;
+  constructor(accumulator: number) {
+    processor = new SumProcessor(accumulator)
+  }
+  process(arr: number[]) {
+    for (let i=0; i< arr.length; i++) {
+      this.processor.processElement(arr[i])
+    }
+    return this.processor.getAccumulator();
+  }
+}
+class SumPorcessor {
+  constructor(private accumulator: number) {}
+  getAccumulator() {
+    return this.accumulator;
+  }
+  processElement(e: number) {
+    this.accumulator += e;
+  }
+}
+```
+
+</Col>
+<Col col={2}>
+
+```typescript title="After"
+class BatchProcessor {
+  constructor(private processor: ElementProcessor) {}
+  process(arr: number[]) {
+    for (let i=0; i<arr.length; i++) {
+      this.processor.processElement(arr[i]);
+    }
+    return this.processor.getAccumulator();
+  }
+}
+
+interface ElementProcessor {
+  getAccumulator(): number;
+  processElement(e: number): void;
+}
+class MinimumProcessor implements ElementProcessor {
+  getAccumulator() { return this.accumulator; }
+  processElement(e: number) {
+    // The variance
+    if (this.accumulator > e) {
+      this.accumulator = e;
+    }
+  }
+}
+class SumProcessor implements ElementProcessor {
+  getAccumulator() { return this.accumulator; }
+  processElement(e: number) {
+    // The variance
+    this.accumulator += e;
+  }
+}
+```
+
+```mermaid
+classDiagram
+class ElementProcessor
+  ElementProcessor: getAccumulator()
+  ElementProcessor: processElement()
+
+class MinimumProcessor
+class SumProcessor
+
+class BatchProcessor
+
+ElementProcessor <|-- MinimumProcessor
+ElementProcessor <|-- SumProcessor
+BatchProcessor --> ElementProcessor
+```
+
+</Col>
+</Row>
+
 
 ## 5.5 統合相同的函式
 
+<Row>
+<Col col={2}>
+
+```typescript title="Before"
+function removeLock1() {
+  for (let y = 0; y < map.length; y++) {
+    for (let x = 0; x < map[y].length; x++) {
+      if (map[y][x].isLock1()) { // 只有這裡有差
+        map[y][x] = new Air();
+      }
+    }
+  }
+}
+function removeLock2() {
+  for (let y = 0; y < map.length; y++) {
+    for (let x = 0; x < map[y].length; x++) {
+      if (map[y][x].isLock2()) { // 只有這裡有差
+        map[y][x] = new Air();
+      }
+    }
+  }
+}
+```
+
+</Col>
+<Col col={2}>
+
+```typescript title="After"
+function remove(shouldRemove: RemoveStrategy) {
+  for (let y = 0; y < map.length; y++) {
+    for (let x = 0; x < map[y].length; x++) {
+      if (shouldRemove.check(map[y][x])) {
+        map[y][x] = new Air();
+      }
+    }
+  }
+}
+```
+
+</Col>
+</Row>
+
 ## 5.6 統合相似的程式碼
+
+(TODO)
