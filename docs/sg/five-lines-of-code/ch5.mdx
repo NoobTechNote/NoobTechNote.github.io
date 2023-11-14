@@ -790,7 +790,6 @@ class Box implements Tile {
 ```mermaid
 classDiagram
   class Tile
-    Tile: falling
     Tile: update()
 
   class Stone
@@ -839,7 +838,7 @@ class FallingStrategy {
     map[y+1][x] = tile;
     map[y][x] = new Air()
   }
-  update(x: number, y: number) {
+  update(tile: Tile, x: number, y: number) {
     this.falling = (map[y+1][x].isAir())
       ? new Falling()
       : new Resting();
@@ -881,7 +880,7 @@ class Strategy
 ConcreteStrategyA
 ConcreteStrategyB
 
- Context *-- Strategy
+Context --> Strategy
 Strategy <|-- ConcreteStrategyA
 Strategy <|-- ConcreteStrategyB
 ```
