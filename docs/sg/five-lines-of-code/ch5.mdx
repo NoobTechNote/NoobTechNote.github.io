@@ -1033,4 +1033,124 @@ function remove(shouldRemove: RemoveStrategy) {
 
 ## 5.6 統合相似的程式碼
 
-(TODO)
+<Row>
+<Col col={2}>
+
+```typescript title="Before: Key1/Lock1"
+class Key1 implements Tile {
+  draw(g: CanvasRenderingContext2D, x: number, y: number) {
+    g.fillStyle = "#ffcc00";
+    g.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+  }
+  moveHorizontal(dx: number) {
+    removeLock1();
+    moveToTile(playerx + dx, playery);
+  }
+}
+
+class Lock1 implements Tile {
+  isLock1() { return true; }
+  isLock2() { return false; }
+  draw(g: CanvasRenderingContext2D, x: number, y: number) {
+    g.fillStyle = "#ffcc00";
+    g.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+  }
+}
+```
+</Col>
+<Col col={2}>
+
+```typescript title="Before: Key2 & Lock2"
+class Key2 implements Tile {
+  draw(g: CanvasRenderingContext2D, x: number, y: number) {
+    g.fillStyle = "#00ccff";
+    g.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+  }
+  moveHorizontal(dx: number) {
+    removeLock2();
+    moveToTile(playerx + dx, playery);
+  }
+}
+
+class Lock2 implements Tile {
+  isLock1() { return false; }
+  isLock2() { return true; }
+  draw(g: CanvasRenderingContext2D, x: number, y: number) {
+    g.fillStyle = "#00ccff";
+    g.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+  }
+}
+```
+
+</Col>
+</Row>
+
+<div style={{textAlign: "center"}}>
+<svg width="120" height="60" xmlns="http://www.w3.org/2000/svg">
+
+ <g>
+  <title>Layer 1</title>
+  <path stroke="#4c4c4c" id="svg_1" d="m1.685,27.56571l58,24.49961l58,-24.49961l-29,0l0,-24.6175l-58,0l0,24.6175l-29,0z" fill="#7f7f7f"/>
+ </g>
+</svg>
+</div>
+
+```typescript title="After"
+class KeyConfiguration { // 封裝Key, Lock會使用到的參數們
+  constructor(
+    private color: string,
+    private _1: boolean, // 若未來需要引入第3或第4個key/lock的組合，可以透過把boolena改成number實現
+    private removeStrategy: RemoveStrategy
+  ) { }
+
+  getColor() { return this.color; }
+  is1() { return this._1; }
+  getRemoveStrategy() { return this.removeStrategy; }
+}
+
+class Key implements Tile { // 整合Key1與Key2，改以keyConf注入做出差別
+  constructor(private keyConf: KeyConfiguration) { }
+  isLock1() { return false; }
+  isLock2() { return false; } // ??? 幹嘛不也從this.keyConf.is1()拿？
+
+  draw(g: CanvasRenderingContext2D, x: number, y: number) {
+    g.fillStyle = this.keyConf.getColor();
+    g.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+  }
+
+  moveHorizontal(dx: number) {
+    remove(this.keyConf.getRemoveStrategy()); // 引入策略模式
+    moveToTile(playerx + dx, playery);
+  }
+}
+
+class Lock implements Tile { // 整合Lock1, Lock2
+  constructor(private keyConf: KeyConfiguration) { }
+
+  isLock1() { return this.keyConf.is1(); }
+  isLock2() { return !this.keyConf.is1(); } // 因為不是Lock1就一定是Lock2，省下一個參數
+
+  draw(g: CanvasRenderingContext2D, x: number, y: number) {
+    g.fillStyle = this.keyConf.getColor();
+    g.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+  }
+
+  moveHorizontal(dx: number) { }
+}
+```
+
+:::info
+5.6的重構，因為注意到key和lock這兩個class彼此是有關連的，刻意對他們做出耦合 (KeyConfiguration)，下一章會繼續討論KeyConfiguration的整理
+:::
+
+## 小結
+
+* 當有類似的程式碼需要合併時，有三種方式可以辦到
+  * 統合相似的類別
+  * 合併ifs
+  * 引入策略模式
+* 規則：「使用純條件式」，指出條件式不該存有副作用(Side Effect)
+  * 簡化條件式可以使用布林運算的算術簡化方式來處理
+* 規則：「不要讓介面只有一個實作」
+  * 不要為了抽象化而抽象化
+  * 應該從既有的實作提取介面，在真正需要的時候才進行抽象處理
