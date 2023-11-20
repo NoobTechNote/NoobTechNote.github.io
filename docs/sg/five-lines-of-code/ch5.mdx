@@ -271,6 +271,7 @@ class FallingStone implements Tile {
   }
   // ...
   isFallingStone()
+}
 ```
 
 </TabItem>
@@ -550,6 +551,7 @@ class Falling implements FallingState {
   // ...
   moveHorizontal(tile: Tile, dx: number) {
   }
+}
 ```
 
 </TabItem>
@@ -613,6 +615,403 @@ b Go through the compiler errors, and insert the default value as an argument.
 
 6 After all the classes are identical, delete all but one of the unified classes, and
 fix all the compile errors by switching to the remaining class.
+
+
+<hr/>
+
+## 5.2 整合簡單條件式
+假設兩個分支做一樣的事情，用 OR (||) 整合起來
+
+導入新方法drop(), rest()來設定新的falling field
+
+<Row>
+<Col col={2}>
+
+```typescript title="Before"
+
+function updateTile(x: number, y: number) {
+  if (map[y][x].isStony()
+    && map[y + 1][x].isAir()) {
+    map[y + 1][x] = new Stone(new Falling());
+    map[y][x] = new Air();
+  } else if (map[y][x].isBoxy()
+    && map[y + 1][x].isAir()) {
+    map[y + 1][x] = new Box(new Falling());
+    map[y][x] = new Air();
+  } else if (map[y][x].isFallingStone()) {
+    map[y][x] = new Stone(new Resting());
+  } else if (map[y][x].isFallingBox()) {
+    map[y][x] = new Box(new Resting());
+  }
+}
+
+```
+
+</Col>
+
+<Col col={2}>
+
+```typescript title="After"
+function updateTile(x: number, y: number) {
+  if (map[y][x].isStony()
+    && map[y + 1][x].isAir()) {
+    map[y + 1][x] = new Stone(new Falling());
+    map[y][x] = new Air();
+  } else if (map[y][x].isBoxy()
+    && map[y + 1][x].isAir()) {
+    map[y + 1][x] = new Box(new Falling());
+    map[y][x] = new Air();
+  } else if (map[y][x].isFallingStone()) {
+    map[y][x].rest();
+  } else if (map[y][x].isFallingBox()) {
+    map[y][x].rest();
+  }
+}
+```
+
+</Col>
+
+</Row>
+
+大部分的method是空的
+```typescript
+
+interface Tile {
+  // ...
+  drop(): void;
+  rest(): void;
+}
+
+class Stone implements Tile {
+  // ...
+  drop() { this.falling = new Falling(); }
+  rest() { this.falling = new Resting(); }
+}
+
+class Flux implements Tile {
+  // ...
+  drop() { }
+  rest() { }
+}
+
+```
+
+
+整合相同程式碼到同一個分支
+<Row>
+<Col col={2}>
+
+```typescript title="Before"
+
+function updateTile(x: number, y: number) {
+  if (map[y][x].isStony()
+    && map[y + 1][x].isAir()) {
+    map[y + 1][x] = new Stone(new Falling());
+    map[y][x] = new Air();
+  } else if (map[y][x].isBoxy()
+    && map[y + 1][x].isAir()) {
+    map[y + 1][x] = new Box(new Falling());
+    map[y][x] = new Air();
+  } else if (map[y][x].isFallingStone()) {
+    map[y][x].rest();
+  } else if (map[y][x].isFallingBox()) {
+    map[y][x].rest();
+  }
+}
+
+```
+
+</Col>
+
+<Col col={2}>
+
+```typescript title="After"
+
+function updateTile(x: number, y: number) {
+  if (map[y][x].isStony()
+    && map[y + 1][x].isAir()) {
+    map[y + 1][x] = new Stone(new Falling());
+    map[y][x] = new Air();
+  } else if (map[y][x].isBoxy()
+    && map[y + 1][x].isAir()) {
+    map[y + 1][x] = new Box(new Falling());
+    map[y][x] = new Air();
+  } else if (map[y][x].isFallingStone()
+    || map[y][x].isFallingBox()) {
+    map[y][x].rest();
+  }
+}
+
+```
+
+</Col>
+</Row>
+
+
+### 5.2.1 Refactoring pattern: COMBINE IFS
+<Row>
+<Col col={2}>
+```typescript title="Before"
+if (expression1) {
+  // body
+} else if (expression2) {
+  // same body
+}
+```
+</Col>
+
+<Col col={2}>
+
+```typescript title="After"
+if ((expression1) || (expression2)) {
+  // body
+}
+```
+</Col>
+</Row>
+
+
+## 5.3 整合複雜條件式
+
+進一步發現第一個if只是把一塊變成石頭，把另外一塊變成空氣，可以用上一節的方法簡化
+
+<Row>
+<Col col={2}>
+
+```typescript title="Before"
+function updateTile(x: number, y: number) {
+  if (map[y][x].isStony()
+    && map[y + 1][x].isAir()) {
+    map[y + 1][x] = new Stone(new Falling());
+    map[y][x] = new Air();
+  } else if (map[y][x].isBoxy()
+    && map[y + 1][x].isAir()) {
+    map[y + 1][x] = new Box(new Falling());
+    map[y][x] = new Air();
+  } else if (map[y][x].isFalling()) {
+    map[y][x].rest();
+  }
+}
+```
+</Col>
+
+
+<Col col={2}>
+
+```typescript title="Before"
+function updateTile(x: number, y:
+  number) {
+  if (map[y][x].isStony()
+    && map[y + 1][x].isAir()) {
+    map[y][x].drop();
+    map[y + 1][x] = map[y][x];
+    map[y][x] = new Air();
+  } else if (map[y][x].isBoxy()
+    && map[y + 1][x].isAir()) {
+    map[y][x].drop();
+    map[y + 1][x] = map[y][x];
+    map[y][x] = new Air();
+  } else if (map[y][x].isFalling()) {
+    map[y][x].rest();
+  }
+}
+```
+</Col>
+</Row>
+
+
+發現兩個body做的事情一樣，再一次整合
+<Row>
+<Col col={2}>
+
+```typescript title="Before"
+function updateTile(x: number, y:
+  number) {
+  if (map[y][x].isStony()
+    && map[y + 1][x].isAir()) {
+    map[y][x].drop();
+    map[y + 1][x] = map[y][x];
+    map[y][x] = new Air();
+  } else if (map[y][x].isBoxy()
+    && map[y + 1][x].isAir()) {
+    map[y][x].drop();
+    map[y + 1][x] = map[y][x];
+    map[y][x] = new Air();
+  } else if (map[y][x].isFalling()) {
+    map[y][x].rest();
+  }
+}
+
+```
+</Col>
+
+<Col col={2}>
+
+```typescript title="After"
+function updateTile(x: number, y:
+  number) {
+  if (map[y][x].isStony()
+    && map[y + 1][x].isAir()
+    || map[y][x].isBoxy()
+    && map[y + 1][x].isAir()) {
+    map[y][x].drop();
+    map[y + 1][x] = map[y][x];
+    map[y][x] = new Air();
+  } else if (map[y][x].isFalling()) {
+    map[y][x].rest();
+  }
+}
+```
+</Col>
+</Row>
+
+### 5.3.1 Using arithmetic rules for conditions
+用數學的加法乘法法則來記憶AND跟OR，OR(||)可以當成加(+), AND(&)可以當成乘(*)
+圖像記憶法，因為OR(||)有兩條槓，可以組成(+)，AND(&)感覺就像有一個x藏在裡面
+
+```
+Commutative Laws:
+a + b  =  b + a
+a × b  =  b × a
+Associative Laws:
+(a + b) + c  =  a + (b + c)
+(a × b) × c  =  a × (b × c)
+Distributive Law:
+a × (b + c)  =  a × b  +  a × c
+(a + b) × c = a × c + a × b
+```
+
+### 5.3.2 Rule: USE PURE CONDITIONS
+STATEMENT: Conditions should always be pure.
+
+Pure意思沒有side effect，像讀檔案的時候最好是先讀了，再移動cursor。
+這個規則來自於常見的command query 分離法則，commands指的是任何會產生side effect的事情，queries代表是pure的事情。
+一個簡單的遵循法則是，只允許回傳void的method做有side effect的事情。
+
+作者的目的是為了把get data跟改動data兩個動作分開來，也更好命名。
+
+
+
+<Row>
+<Col col={2}>
+
+```typescript title="Before"
+class Reader {
+  private data: string[];
+  private current: number;
+  readLine() {
+    this.current++;
+    return this.data[this.current] || null;
+  }
+}
+/// ...
+let br = new Reader();
+let line: string | null;
+while ((line = br.readLine()) !== null) {
+  console.log(line);
+}
+```
+</Col>
+
+<Col col={2}>
+
+```typescript title="After"
+class Reader {
+  private data: string[];
+  private current: number;
+  nextLine() {
+    this.current++;
+  }
+  readLine() {
+    return this.data[this.current] || null;
+  }
+}
+/// ...
+let br = new Reader();
+for (; br.readLine() !== null; br.nextLine()) {
+  let line = br.readLine();
+  console.log(line);
+}
+```
+</Col>
+</Row>
+
+### 5.3.3 Applying condition arithmetic
+
+<Row>
+<Col col={2}>
+
+```typescript title="Before"
+function updateTile(x: number, y: number) {
+  if (map[y][x].isStony()
+    && map[y + 1][x].isAir()
+    || map[y][x].isBoxy()
+    && map[y + 1][x].isAir()) {
+    map[y][x].drop();
+    map[y + 1][x] = map[y][x];
+    map[y][x] = new Air();
+  } else if (map[y][x].isFalling()) {
+    map[y][x].rest();
+  }
+}
+```
+</Col>
+
+<Col col={2}>
+
+```typescript title="After"
+function updateTile(x: number, y: number) {
+  if ((map[y][x].isStony()
+    || map[y][x].isBoxy())
+    && map[y + 1][x].isAir()) {
+    map[y][x].drop();
+    map[y + 1][x] = map[y][x];
+    map[y][x] = new Air();
+  } else if (map[y][x].isFalling()) {
+    map[y][x].rest();
+  }
+}
+```
+</Col>
+</Row>
+
+
+接著push || into classes
+<Row>
+<Col col={2}>
+
+```typescript title="Before"
+function updateTile(x: number, y: number) {
+  if ((map[y][x].isStony()
+    || map[y][x].isBoxy())
+    && map[y + 1][x].isAir()) {
+    map[y][x].drop();
+    map[y + 1][x] = map[y][x];
+    map[y][x] = new Air();
+  } else if (map[y][x].isFalling()) {
+    map[y][x].rest();
+  }
+}
+```
+</Col>
+
+<Col col={2}>
+
+```typescript title="After"
+function updateTile(x: number, y: number) {
+  if (map[y][x].canFall()
+    && map[y + 1][x].isAir()) {
+    map[y][x].drop();
+    map[y + 1][x] = map[y][x];
+    map[y][x] = new Air();
+  } else if (map[y][x].isFalling()) {
+    map[y][x].rest();
+  }
+}
+```
+</Col>
+</Row>
+
 
 
 <hr/>
