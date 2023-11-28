@@ -168,7 +168,7 @@ function generatePostLink(website: Website, post: BlogPost) {
 function generatePostLink(website: Website,
   post: BlogPost) {
   let url = website.getUrl();
-  let name = post.getAuthorName();
+  let name = post.getAuthorName(); // push to code
   let postId = post.getId();
   return url + name + postId;
 }
@@ -186,6 +186,9 @@ class BlogPost {
 class BlogPost {
   constructor(private author: User, private id: string) { }
   getId() { return this.id; }
+  getAuthorName() {
+    return this.author.getUsername();
+  }
 }
 ```
 </TabItem>
@@ -255,7 +258,7 @@ class Stone implements Tile {
 class Box implements Tile {
   // ...
   moveHorizontal(dx: number) {
-    this.fallStrategy.getFalling()
+    this.fallStrategy.getFalling()// error
       .moveHorizontal(this, dx);
   }
 }
@@ -274,14 +277,14 @@ class FallStrategy {
 ```typescript
 class Stone implements Tile {
   // ...
-  moveHorizontal(dx: number) {
+  moveHorizontal(dx: number) {// push to code
     this.fallStrategy
       .moveHorizontal(this, dx);
   }
 }
 class Box implements Tile {
   // ...
-  moveHorizontal(dx: number) {
+  moveHorizontal(dx: number) {// push to code
     this.fallStrategy
       .moveHorizontal(this, dx);
   }
