@@ -10,9 +10,10 @@ import TabItem from "@theme/TabItem";
 ## 6.1 Encapsulating without getters
 ### 6.1.1 Rule: DO NOT USE GETTERS OR SETTERS
 
-:::success
+:::tip
 Do not use setters or getters for non-Boolean fields.
 :::
+
 原因是：
 1. setter和getter會使類的不變量變得全局，破壞了封裝性。
 任何獲得該對象的人都可以呼叫getter和setter，構成未知的修改。
@@ -34,12 +35,19 @@ class User {
   constructor(private username: string) { }
   getUsername() { return this.username; }
 }
+
+
+
+
 class BlogPost {
   constructor(private author: User,
     private id: string) { }
   getId() { return this.id; }
   getAuthor() { return this.author; }
 }
+
+
+
 function generatePostLink(website: Website,
   post: BlogPost) {
   let url = website.getUrl();
@@ -86,18 +94,19 @@ function generatePostLink(website: Website,
 </Col>
 </Row>
 
-:::success
-*Law of Demeter*
+:::note
+*Law of Demeter*.
+
 It means "Don't talk to strangers." 
 A stranger in this context is an object that we do not have direct access to but can obtain a reference to.
 :::
 
 ### 6.1.3 Refactoring pattern: ELIMINATE GETTER OR SETTER
 
-:::PROCESS
-1 Make the getter or setter private to get errors everywhere it is used.
-2 Fix the errors with PUSH CODE INTO CLASSES.
-3 The getter or setter is inlined as part of PUSH CODE INTO CLASSES. It is therefore
+:::tip
+1. Make the getter or setter private to get errors everywhere it is used.
+2. Fix the errors with PUSH CODE INTO CLASSES.
+3. The getter or setter is inlined as part of PUSH CODE INTO CLASSES. It is therefore
 unused, so delete it to avoid other people trying to use it.
 :::
 
@@ -116,7 +125,7 @@ class User {
 class BlogPost {
   constructor(private author: User, private id: string) { }
   getId() { return this.id; }
-  getAuthor() { return this.author; }
+  getAuthor() { return this.author; }// from User, should make it private
 }
 function generatePostLink(website: Website, post: BlogPost) {
   let url = website.getUrl();
@@ -146,7 +155,7 @@ class BlogPost {
 }
 function generatePostLink(website: Website, post: BlogPost) {
   let url = website.getUrl();
-  let user = post.getAuthor();
+  let user = post.getAuthor();// error
   let name = user.getUsername();
   let postId = post.getId();
   return url + name + postId;
@@ -175,7 +184,40 @@ class BlogPost {
 
 ```typescript
 class BlogPost {
-// ...
+  constructor(private author: User, private id: string) { }
+  getId() { return this.id; }
+}
+```
+</TabItem>
+<TabItem value="Final.">
+
+```typescript
+class Website {
+  constructor(private url: string) { }
+  generateLink(name: string, id: string) {
+    return this.url + name + id;
+  }
+}
+class User {
+  constructor(private username: string) { }
+  generateLink(website: Website, id: string) {
+    return website.generateLink(
+      this.username,
+      id);
+  }
+}
+class BlogPost {
+  constructor(private author: User,
+    private id: string) { }
+  generateLink(website: Website) {
+    return this.author.generateLink(
+      website,
+      this.id);
+  }
+}
+function generatePostLink(website: Website,
+  post: BlogPost) {
+  return post.generateLink(website);
 }
 ```
 </TabItem>
@@ -206,7 +248,7 @@ class FallStrategy {
 class Stone implements Tile {
   // ...
   moveHorizontal(dx: number) {
-    this.fallStrategy.getFalling()
+    this.fallStrategy.getFalling()// error
       .moveHorizontal(this, dx);
   }
 }
@@ -219,7 +261,7 @@ class Box implements Tile {
 }
 class FallStrategy {
   // ...
-  private getFalling() {
+  private getFalling() {//set as private
     return this.falling;
   }
 }
@@ -246,7 +288,7 @@ class Box implements Tile {
 }
 class FallStrategy {
   // ...
-  moveHorizontal(tile: Tile, dx: number) {
+  moveHorizontal(tile: Tile, dx: number) {//實作moveHorizontal
     this.falling
       .moveHorizontal(tile, dx);
   }
@@ -278,7 +320,7 @@ class Box implements Tile {
 class FallStrategy {
   constructor(private falling: FallingState) { }
   update(tile: Tile, x: number, y: number) {
-    this.falling = map[y + 1][x].isAir()//出現if-else
+    this.falling = map[y + 1][x].isAir()// !出現if-else
       ? new Falling()
       : new Resting();
     this.drop(tile, x, y);
@@ -293,6 +335,7 @@ class FallStrategy {
   moveHorizontal(tile: Tile, dx: number) {
     this.falling.moveHorizontal(tile, dx);
   }
+  //remove getFalling()
 }
 ```
 
@@ -303,25 +346,25 @@ class FallStrategy {
 ```typescript
 interface Tile {
   // ...
-  getBlockOnTopState(): FallingState;
+  getBlockOnTopState(): FallingState;// return state
 }
 class Air implements Tile {
   // ...
   getBlockOnTopState() {
-    return new Falling();
+    return new Falling();// return state
   }
 }
 class Stone implements Tile {
   // ...
   getBlockOnTopState() {
-    return new Resting();
+    return new Resting();// return state
   }
 }
 class FallStrategy {
   // ...
   update(tile: Tile, x: number, y: number) {
     this.falling =
-      map[y + 1][x].getBlockOnTopState();
+      map[y + 1][x].getBlockOnTopState();// push to code
     this.drop(tile, x, y);
   }
   private drop(tile: Tile,
@@ -341,18 +384,18 @@ class FallStrategy {
 interface FallingState {
   // ...
   drop(
-    tile: Tile, x: number, y: number): void;
+    tile: Tile, x: number, y: number): void;// push to code
 }
 class Falling {
   // ...
-  drop(tile: Tile, x: number, y: number) {
+  drop(tile: Tile, x: number, y: number) {// push to code
     map[y + 1][x] = tile;
     map[y][x] = new Air();
   }
 }
 class Resting {
   // ...
-  drop(tile: Tile, x: number, y: number) { }
+  drop(tile: Tile, x: number, y: number) { }// push to code
 }
 class FallStrategy {
   // ...
@@ -361,6 +404,7 @@ class FallStrategy {
       map[y + 1][x].getBlockOnTopState();
     this.falling.drop(tile, x, y)
   }
+  // delete drop()
 }
 ```
 
@@ -369,7 +413,7 @@ class FallStrategy {
 </Tabs>
 
 ## 6.2 Encapsulating simple data
-:::success
+:::tip
 Our code should not have methods or variables with common prefixes or suffixes.
 :::
 
@@ -378,8 +422,10 @@ Our code should not have methods or variables with common prefixes or suffixes.
 2. 隱藏不變量，確保只有在類中會修改這些不變量
 
 符合單一職責原則。
-:::success
+:::note
 *single responsibility principle*
+
+
 Methods/Classes should do one thing.
 :::
 
@@ -424,7 +470,7 @@ class Account {
 </Col>
 </Row>
 
-### 6.2.2 應用SRP
+### 6.2.2 應用NEVER HAVE COMMON AFFIXES
 
 例如，我們的程式碼中有以下方法和變量：
 
@@ -481,21 +527,11 @@ class Player {
 ```typescript
 function moveToTile(
   newx: number, newy: number) {
-  map[player.getY()][player.getX()] =
+  map[player.getY()][player.getX()] = // replace with getter
     new Air();
   map[newy][newx] = new PlayerTile();
-  player.setX(newx);
-  player.setY(newy);
-}
-
-function drawPlayer(player: Player,
-  g: CanvasRenderingContext2D) {
-  g.fillStyle = "#ff0000";
-  g.fillRect(
-    player.getX() * TILE_SIZE,
-    player.getY() * TILE_SIZE,
-    TILE_SIZE,
-    TILE_SIZE);
+  player.setX(newx);// replace with setter
+  player.setY(newy);// replace with setter
 }
 /// ...
 ```
@@ -511,10 +547,20 @@ interface Tile {
   moveVertical(
     player: Player, dy: number): void;
 }
+
+function drawPlayer(player: Player, // drawPlayer應該要在Player中
+  g: CanvasRenderingContext2D) {
+  g.fillStyle = "#ff0000";
+  g.fillRect(
+    player.getX() * TILE_SIZE,// replace with getter
+    player.getY() * TILE_SIZE,// replace with getter
+    TILE_SIZE,
+    TILE_SIZE);
+}
 ```
 
 </TabItem>
-<TabItem value="把draw player也放進去" default>
+<TabItem value="把draw player也放Player中" default>
 
 ```typescript
 function drawPlayer(player: Player,
@@ -590,73 +636,113 @@ let player = new Player();
 <TabItem value="Before">
 
 ```typescript
-function updateTile(x: number, y: number) {
-  if (map[y][x].isStony()
-    && map[y + 1][x].isAir()) {
-    map[y + 1][x] = new FallingStone();
-    map[y][x] = new Air();
-  } else if (map[y][x].isBoxy()
-    && map[y + 1][x].isAir()) {
-    map[y + 1][x] = new FallingBox();
-    map[y][x] = new Air();
-  } else if (map[y][x].isFallingStone()) {
-    map[y][x] = new Stone();
-  } else if (map[y][x].isFallingBox()) {
-    map[y][x] = new Box();
-  }
-}
-class Stone implements Tile {
-  // ...
-  isFallingStone() { return false; }
-  moveHorizontal(dx: number) {
-    if (map[playery][playerx + dx + dx].isAir()
-      && !map[playery + 1][playerx + dx].isAir()) {
-      map[playery][playerx + dx + dx] = this;
-      moveToTile(playerx + dx, playery);
-    }
-  }
-}
-class FallingStone implements Tile {
-  // ...
-  isFallingStone() { return true; }
-  moveHorizontal(dx: number) { }
+class Player {
+    // ...
+    getX() { return this.x; }// make private
+    getY() { return this.y; }
+    setX(x: number) { this.x = x; }
+    setY(y: number) { this.y = y; }
 }
 ```
 
 </TabItem>
 
-<TabItem value="After">
+<TabItem value="make private">
 
 ```typescript
-function updateTile(x: number, y: number) {
-  if (map[y][x].isStony()
-    && map[y + 1][x].isAir()) {
-    map[y + 1][x] = new Stone(true);
-    map[y][x] = new Air();
-  } else if (map[y][x].isBoxy()
-    && map[y + 1][x].isAir()) {
-    map[y + 1][x] = new FallingBox();
-    map[y][x] = new Air();
-  } else if (map[y][x].isFallingStone()) {
-    map[y][x] = new Stone(false);
-  } else if (map[y][x].isFallingBox()) {
-    map[y][x] = new Box();
-  }
+class Player {
+    // ...
+    private getX() { return this.x; }
 }
-class Stone implements Tile {
-  constructor(private falling: boolean) { }
-  // ...
-  isFallingStone() { return this.falling; }
-  moveHorizontal(dx: number) {
-    if (this.isFallingStone() === false) {
-      if (map[playery][playerx + dx + dx].isAir()
-        && !map[playery + 1][playerx + dx].isAir()) {
-        map[playery][playerx + dx + dx] = this;
-        moveToTile(playerx + dx, playery);
-      }
-    } else if (this.isFallingStone() === true) {
+class Right implements Input {
+    handle(player: Player) {
+        map[player.getY()][player.getX() + 1]//error
+            .moveHorizontal(player, 1);
     }
-  }
+}
+class Resting {
+    // ...
+    moveHorizontal(
+        player: Player, tile: Tile, dx: number) {
+        if (map[player.getY()]
+        [player.getX() + dx + dx].isAir()//error
+            && !map[player.getY() + 1]
+            [player.getX() + dx].isAir()) {//error
+            map[player.getY()]
+            [player.getX() + dx + dx] = tile;//error
+            moveToTile(player,
+                player.getX() + dx,//error
+                player.getY());
+        }
+    }
+}
+/// ...
+moveToTile(player,
+    player.getX(), player.getY() + dy);//error
+/// ...
+function moveToTile(player: Player,
+    newx: number, newy: number) {
+    map[player.getY()][player.getX()] =//error
+        new Air();
+    map[newy][newx] = new PlayerTile();
+    player.setX(newx);
+    player.setY(newy);
+}
+/// ...
+class Player {
+    // ...
+}
+```
+
+</TabItem>
+<TabItem value="PUSH CODE INTO CLASSES">
+
+```typescript
+class Right implements Input {
+    handle(player: Player) {
+        player.moveHorizontal(1);
+    }
+}
+class Resting {
+    // ...
+    moveHorizontal(
+        player: Player, tile: Tile, dx: number) {
+        player.pushHorizontal(tile, dx);
+    }
+}
+/// ...
+player.move(0, dy);
+/// ...
+function moveToTile(player: Player,
+    newx: number, newy: number) {
+    player.moveToTile(newx, newy);
+}
+/// ...
+class Player {
+    // getter removed
+    // ...
+    moveHorizontal(dx: number) {
+        map[this.y][this.x + dx]
+            .moveHorizontal(this, dx);
+    }
+    move(dx: number, dy: number) {
+        this.moveToTile(this.x + dx, this.y + dy);
+    }
+    pushHorizontal(tile: Tile, dx: number) {
+        if (map[this.y]
+        [this.x + dx + dx].isAir()
+            && !map[this.y + 1]
+            [this.x + dx].isAir()) {
+            map[this.y][this.x + dx + dx] = tile;
+            this.moveToTile(this.x + dx, this.y);
+        }
+    }
+    moveToTile(newx: number, newy: number) {
+        map[this.y][this.x] = new Air();
+        map[newy][newx] = new PlayerTile();
+        this.x = newx;
+        this.y = newy;
+    }
 }
 ```
 
@@ -666,13 +752,15 @@ class Stone implements Tile {
 
 ### 6.2.3 Refactoring pattern: ENCAPSULATE DATA
 
-:::PROCESS
+:::tip
 1. Create a class.
 2. Move the variables into the new class, replacing let with private. Simplify the
 variables’ names; also make getters and setters for the variables.
 3. Because the variables are no longer in the global scope, the compiler helps us
 find all the references by giving errors. Fix these errors in the following five
 steps:
+
+
   1. Pick a good variable name for an instance of the new class.
   2. Replace access with getters or setters on the pretend variable.
   3. If we have errors in two or more different methods, add a parameter with the
