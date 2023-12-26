@@ -851,3 +851,889 @@ let counter = new Counter();
 
 </TabItem>
 </Tabs>
+
+## 6.3 封裝複雜的資料 Encapsulate Complex Data
+
+使用 Encapsulate Data 方法
+將對 `Map` 的操作透過一個 Map class 完成 
+
+<Tabs>
+<TabItem value="Before">
+
+```typescript
+
+interface Tile{
+  // ...
+  moveHorizontal(player: Player, dx: number):void;
+  moveVertical(player: Player, dy: number):void;
+  update(x: number, y:number): void;
+}
+
+// ...
+function remove(shouldRemove: RemoveStrategy){
+  for(let y = 0; y < map.length; y++){
+    for(let x = 0; x < map[y]; x++){
+      if(shouldRemove.check(map[y][x])){
+        map[y][x] = new Air();
+      }
+    }
+  }
+}
+
+// ...
+let map: Tile[][];
+
+```
+
+</TabItem>
+
+<TabItem value="After">
+
+```typescript
+interface Tile{
+  // ...
+  moveHorizontal(map: Map, player: Player, dx: number):void;
+  moveVertical(map: Map, player: Player, dy: number):void;
+  update(map: Map, x: number, y:number): void;
+}
+
+function remove(map: Map, shouldRemove: RemoveStrategy){
+  for(let y = 0; y < map.getMap().length; y++){
+    for(let x = 0; x < map.getMap()[y].length; x++){
+      if(shouldRemove.check(map.getMap()[y][x])){
+        map.getMap()[y][x] = new Air();
+      }
+    }
+  }
+}
+
+class Map{
+  private map: Tile[][];
+  getMap(){ return this.map;}
+  setMap(map:Tile[][]){this.map = map;}
+}
+
+
+```
+
+</TabItem>
+
+</Tabs>
+
+接著，使用 Push code into classes 與 Inline method 簡化了 function 名稱
+
+<Tabs>
+<TabItem value="Before">
+
+```typescript
+
+function transformMap(map: Map) {
+  map.setMap(new Array(rawMap.length));
+  for (let y = 0; y < rawMap.length; y++){
+    map.getMap()[y] = new Array(rawMap[y].length);
+    for (let x = 0; x < rawMap[y].length; x++){
+      map.getMap()[y][x] = transformTile(rawMap[y][x])
+    }
+  }
+}
+
+function updateMap(map: Map){
+  for (let y = map.getMap().length - 1; y >= 0; y--){
+    for (let x = 0; x < map.getMap()[y].length; x++) {
+      map.getMap()[y][x].update(map, x, y);
+    }
+  }
+}
+
+function drawMap(map: Map, g: CanvasRenderingContext2D){
+  for (let y = 0; y < map.getMap().length; y++){
+    for (let x = 0; x < map.getMap()[y].length; x++) {
+      map.getMap()[y][x].draw(g, x, y);
+    }
+  }
+}
+
+```
+
+</TabItem>
+
+<TabItem value="After">
+
+```typescript
+
+class Map{
+  private map: Tile[][];
+  getMap(){ 
+    return this.map;
+  }
+  setMap( map:Tile[][] ){
+    this.map = map; 
+  }
+
+  transform(){
+    this.map = new Array(rawMap.length);
+    for (let y = 0; y < rawMap.length; y++){
+      this.map[y] = new Array(rawMap[y].length);
+      for (let x = 0; x < rawMap[y].length; x++){
+        this.map[y][x] = transformTile(rawMap[y][x]);
+      }
+    }
+  }
+
+  update() {
+    for (let y = this.map.length - 1; y >= 0; y--){
+      for (let x = 0; x < this.map[y].length; x++) {
+        this.map[y][x].update(this, x, y);
+      }
+    }
+  }
+
+  draw( g: CanvasRenderingContext2D ) {
+    for (let y = 0; y < this.map.length; y++){
+      for (let x = 0; x < this.map[y].length; x++) {
+        this.map[y][x].draw(g, x, y);
+      }
+    }
+  }
+}
+
+
+```
+
+</TabItem>
+
+</Tabs>
+
+如同前面對於 `Player` 的做法，移除 getter 與 setter(Eliminate getter or setter) 
+
+<Tabs>
+<TabItem value="Before">
+
+```typescript
+class Falling {
+  // ...
+  drop(map: Map, tile: Tile, x: number, y: number){
+    map.getMap()[y + 1][x] = tile;
+    map.getMap()[y][x] = new Air();
+  }
+}
+
+class FallStrategy {
+  // ...
+  update(map: Map, tile: Tile, x: number, y: number){
+    this.falling = map.getMap()[y+1][x].isAir() ? new Falling() : new Resting();
+    this.falling.drop(map, tile, x, y);
+  }
+}
+
+class Player {
+  // ...
+  moveHorizontal(map: Map, dx: number) {
+    map.getMap()[this.y][this.x + dx].moveHorizontal(map, this, dx);
+  }
+  moveVertical(map: Map, dy: number) {
+    map.getMap()[this.y + dy][this.x].moveVertical(map, this, dy);
+  }
+  pushHorizontal(map: Map, tile: Tile, dx: number) {
+    if(map.getMap()[this.y][this.x + dx + dx].isAir() 
+    && !map.getMap()[this.y + 1][this.x + dx].isAir()){
+      map.getMap()[this.y][this.x + dx + dx] = tile;
+      this.moveToTile(map, this.x + dx, this.y);
+    }
+  }
+  private moveToTile(map: Map, newx: number, newy: number){
+    map.getMap()[this.y][this.x] = new Air();
+    map.getMap()[newy][newx] = new PlayerTile();
+    this.x = newx;
+    this.y = newy;
+  }
+}
+
+class Map {
+  // ...
+}
+
+```
+
+</TabItem>
+<TabItem value="After">
+
+```typescript
+class Falling {
+  // ...
+  drop(map: Map, tile: Tile, x: number, y: number){
+    map.drop(tile, x, y);
+  }
+}
+
+class FallStrategy {
+  // ...
+  update(map: Map, tile: Tile, x: number, y: number){
+    this.falling = map.getBlockOnTopState(x, y + 1);
+    this.falling.drop(map, tile, x, y);
+  }
+}
+
+class Player {
+  // ...
+  moveHorizontal(map: Map, dx: number) {
+    map.moveHorizontal(this, this.x, this.y, dx);
+  }
+  moveVertical(map: Map, dy: number) {
+    map.moveVertical(this, this.x, this.y, dy);
+  }
+  pushHorizontal(map: Map, tile: Tile, dx: number) {
+    if(map.isAir(this.x + dx + dx, this.y) 
+    && !map.isAir(this.x + dx, this.y + 1)){
+      map.setTile(this.x + dx + dx, this.y, tile);
+      this.moveToTile(map, this.x + dx, this.y);
+    }
+  }
+  private moveToTile(map: Map, newx: number, newy: number){
+    map.movePlayer(this.x, this.y, newx, newy);
+    this.x = newx;
+    this.y = newy;
+  }
+}
+
+class Map {
+  // ...
+  drop(tile: Tile, x: number, y: number){
+    this.map[y + 1][x] = tile;
+    this.map[y][x] = new Air();
+  }
+
+  getBlockOnTopState(x: number, y: number){
+    return this.map[y][x].getBlockOnTopState();
+  }
+
+  isAir(x: number, y:number){
+    return this.map[y][x].isAir();
+  }
+  setTile(x: number, y: number, tile: Tile){
+    this.map[y][x] = tile;
+  }
+
+  moveHorizontal(player: Player, x: number, y: number, dx: number) {
+    this.map.[y][x + dx].moveHorizontal(this, player, dx);
+  }
+  moveVertical(player: Player, x: number, y: number, dy: number) {
+    this.map.[y + dy][x].moveVertical(this, player, dy);
+  }
+}
+
+```
+
+</TabItem>
+
+</Tabs>
+
+Remove 這個方法也直接移進 Map (Inline Method)
+
+<Tabs>
+<TabItem value="Before">
+
+```typescript
+
+function remove(map: Map, shouldRemove: RemoveStrategy){
+  for(let y = 0; y < map.getMap().length; y++){
+    for(let x = 0; x < map.getMap()[y].length; x++){
+      if(shouldRemove.check(map.getMap()[y][x])){
+        map.getMap()[y][x] = new Air();
+      }
+    }
+  }
+}
+
+
+class Map {
+  // ...
+  getMap() {
+    return this.map;
+  }
+}
+
+```
+
+</TabItem>
+<TabItem value="After">
+
+```typescript
+class Map {
+  // ...
+  remove(shouldRemove: RemoveStrategy){
+    for(let y = 0; y < map.getMap().length; y++){
+      for(let x = 0; x < map.getMap()[y].length; x++){
+        if(shouldRemove.check(map.getMap()[y][x])){
+          this.map[y][x] = new Air();
+        }
+      }
+    }
+  }
+}
+
+```
+
+</TabItem>
+
+</Tabs>
+
+一般而言不會在 public 介面，像是 Player 中使用像是 setTile 這樣的存在
+因此我們將 PushHorizontal 也放進 Map 裡，由 map 去呼叫 player 
+
+<Tabs>
+<TabItem value="Before">
+
+```typescript
+class Player {
+  // ...
+  pushHorizontal(map: Map, tile: Tile, dx: number) {
+    if(map.isAir(this.x + dx + dx, this.y) 
+    && !map.isAir(this.x + dx, this.y + 1)){
+      map.setTile(this.x + dx + dx, this.y, tile);
+      this.moveToTile(map, this.x + dx, this.y);
+    }
+  }
+  private moveToTile(map: Map, newx: number, newy: number){
+    map.movePlayer(this.x, this.y, newx, newy);
+    this.x = newx;
+    this.y = newy;
+  }
+}
+
+```
+
+</TabItem>
+<TabItem value="After">
+
+```typescript
+class Player {
+  // ...
+  pushHorizontal(map: Map, tile: Tile, dx: number) {
+    map.pushHorizontal(this, tile, this.x, this.y, dx);
+  }
+  // 改成 public method
+  moveToTile(map: Map, newx: number, newy: number){
+    map.movePlayer(this.x, this.y, newx, newy);
+    this.x = newx;
+    this.y = newy;
+  }
+}
+
+class Map {
+  // ...
+  pushHorizontal(player: Player, x: number, y: number, dx: number) {
+    if(this.map[y][x + dx + dx].isAir() && !this.map[y + 1][x + dx].isAir() ){
+      this.map[y][x + dx + dx] = tile;
+      player.moveToTile(this, x + dx, y);
+    }
+  }
+}
+
+```
+
+</TabItem>
+
+</Tabs>
+
+上述的改動讓 setTile 變成只有在 Map 中使用，可以考慮直接拿掉或是改成 private function
+
+## 6.4 移除循序不變的條件
+
+:::tip
+循序不變性(sequence invariant)：當某些程式需要在其他程式前被呼叫
+:::
+
+在前一章節中所建立的 Map 是透過 transform 來初始化就符合這個情境，透過 constructor 強制這個 class 在被實例化的同時就需要先初始化
+強制其照特定的順序執行
+
+<Tabs>
+<TabItem value="Before">
+
+```typescript
+class Map {
+  // ...
+  transform() {
+    // ...
+  }
+}
+// ...
+window.onload = () =>{
+  map.transform();
+  gameLoop(map);
+}
+
+```
+
+</TabItem>
+<TabItem value="After">
+
+```typescript
+
+class Map {
+  // ...
+  constructor() { // transform 改成 constructor
+    // ...
+  }
+}
+
+window.onload = () => {
+  gameLoop(map);
+}
+
+```
+
+</TabItem>
+
+</Tabs>
+
+
+
+### 6.4.1 重構模式：強制循序(Enforce Sequence)
+
+核心：『教』編譯器如何執行我們的程式
+
+<Tabs>
+<TabItem value="Before">
+
+```typescript
+
+function print(str: string){
+  // string should be capitalized
+  console.log(str)
+}
+
+```
+
+</TabItem>
+<TabItem value="After">
+
+```typescript
+class CapitalizedString {
+  private value: string;
+  constructor(str: string) {
+    this.value = capitalized(str);
+  }
+  print() {
+    console.log(value);
+  }
+}
+
+```
+
+</TabItem>
+
+</Tabs>
+
+Enforce Sequence 有兩種變體
+1. 內部：將目標函式移動到新的 class 內，如同前面的 CapitalizedString
+2. 外部：只將目標函式的參數改傳入一個特定型別
+
+### 內部 & 外部
+<Row>
+<Col col={2}>
+
+```typescript title="內"
+class CapitalizedString {
+  private value: string;
+  constructor(str: string) {
+    this.value = capitalize(str);
+  }
+  print() {
+    console.log(value);
+  }
+}
+```
+
+</Col>
+<Col col={2}>
+
+```typescript title="外"
+class CapitalizedString {
+  private readonly value: string;
+  constructor(str: string) {
+    this.value = capitalize(str);
+  }
+}
+
+function print(str: CapitalizedString){
+  console.log(str.value);
+}
+
+```
+
+</Col>
+</Row>
+
+### Example
+銀行出入帳
+我們想要確保在把錢轉給對方前，錢會先從轉出方扣除
+
+步驟如下：
+1. 使用 Encapsulate Date 重構最後要執行的方法
+2. 讓 constructor 呼叫第一個方法
+3. 如果這兩個方法的引數有關聯，把這些引數變成欄位，並從方法中移除
+
+<Tabs>
+<TabItem value="Step.0 ">
+
+```typescript
+
+function deposit(to: string, amount: number){
+  let accountId = database.find(to);
+  database.updateOne(accountId, { $inc: { balance: amount } })
+}
+
+```
+</TabItem>
+
+<TabItem value="Step.1 ">
+
+```typescript
+class Transfer {
+  deposit(to: string, amount: number){
+    let accountId = database.find(to);
+    database.updateOne(accountId, { $inc: { balance: amount } })
+  }
+}
+
+```
+
+</TabItem>
+
+<TabItem value="Step.2 ">
+
+```typescript
+class Transfer {
+  constructor(from: string, amount: number) {
+    this.deposit(from, -amount);
+  }
+  deposit(to: string, amount: number){
+    let accountId = database.find(to);
+    database.updateOne(accountId, { $inc: { balance: amount } })
+  }
+}
+
+```
+
+</TabItem>
+
+<TabItem value="Step.3 ">
+
+```typescript
+class Transfer {
+  constructor(from: string, private amount: number) {
+    this.deposit(from, -this.amount);
+  }
+  private depositHelper(to: string, amount: number) {
+    let accountId = database.find(to);
+    database.updateOne(accountId, { $inc: { balance: amount } })
+  }
+  deposit(to: string){
+    this.depositHelper(to, this.amount);
+  }
+}
+
+```
+
+</TabItem>
+
+</Tabs>
+
+此為負向轉移的寫法．確保 amount 是在 Transfer 建立時就定義好的，但同時也會需要確保 deposit 被執行，否則錢就消失了
+
+
+## 6.5 另一種消除 enum 的方法
+
+enum 不支援方法
+
+### 6.5.1 利用 private constructor 
+
+每個物件需要透過 constructor 建立，如果把 constructor 設為 private ，物件就只能在 class 內部被建立
+可以更有效控制實例的數量
+如果把這些實例放在 public const 中，就視同 enum 的用法
+
+<Tabs>
+<TabItem value="Enum">
+
+```typescript
+enum TShirtSize {
+  SMALL,
+  MEDIUM,
+  LARGE
+}
+
+function sizeToString(s: TShirtSize) {
+  if (s === TShirtSize.SMALL) {
+    return "S"
+  }else if (s === TShirtSize.MEDIUM) {
+    return "M"
+  }else if (s === TShirtSize.LARGE) {
+    return "L"
+  }
+}
+
+```
+
+</TabItem>
+
+<TabItem value="Private Constructor">
+
+```typescript
+class TShirtSize {
+  static readonly SMALL = new TShirtSize();
+  static readonly MEDIUM = new TShirtSize();
+  static readonly LARGE = new TShirtSize();
+  private constructor() { };
+}
+
+function sizeToString(s: TShirtSize) {
+  if (s === TShirtSize.SMALL) {
+    return "S"
+  }else if (s === TShirtSize.MEDIUM) {
+    return "M"
+  }else if (s === TShirtSize.LARGE) {
+    return "L"
+  }
+}
+
+```
+
+</TabItem>
+
+<TabItem value="Replace Type Code With Classes">
+
+```typescript
+interface SizeValue {}
+class SmallValue implements SizeValue {}
+class MediumValue implements SizeValue {}
+class LargeValue implements SizeValue {}
+
+class TShirtSize {
+  static readonly SMALL = new TShirtSize(new SmallValue());
+  static readonly MEDIUM = new TShirtSize(new MediumValue());
+  static readonly LARGE = new TShirtSize(new LargeValue());
+  private constructor(private value: SizeValue) { };
+}
+
+
+```
+
+</TabItem>
+
+</Tabs>
+
+用 Replace Type Code With Classes 雖然可以解決 sizeToString 中 大量的 if else
+但作者大多數的情況下不會選擇這樣的做法，因為在有些程式語言並不適用，例如：Java
+如果要消除 enum ，選用先前的方法優先
+
+----
+
+回到遊戲範例，建立一個新類別用來消除 enum RawTile 
+
+```typescript
+interface RawTileValue { }
+class AirValue implements RawTileValue { }
+// ... implement 多個 RawTileValue
+class RawTile2 {
+  static readonly AIR = new RawTile2(new AirValue());
+  // ... 放入多個 static readonly class
+}
+```
+
+
+### 6.5.2 重新對映數值到類別
+將數字轉換為新的 RawTile2，建立一個與 enum 相同的順序的陣列
+
+<Tabs>
+<TabItem value="Before">
+
+```typescript
+enum RawTile {
+  AIR,
+  FLUX,
+  UNBREAKABLE,
+  PLAYER,
+  STONE,
+  FALLING_STONE,
+  BOX,
+  FALLING_BOX,
+  KEY1, LOCK1,
+  KEY2, LOCK2
+}
+
+```
+
+</TabItem>
+
+<TabItem value="After">
+
+```typescript
+const RAW_TITLES = [
+  RawTile2.AIR, 
+  RawTile2.FLUX, 
+  RawTile2.UNBREAKABLE, 
+  RawTile2.PLAYER,
+  // ... 
+]
+
+
+```
+
+</TabItem>
+
+</Tabs>
+
+有了這個陣列就可以將原本的 enum 的數字對映到相應的實例
+<Tabs>
+<TabItem value="Before">
+
+```typescript
+let rawMap: RawTile[][] = [
+  //...
+];
+
+class Map {
+  private map: Tile[][];
+  constructor() {
+    this.map = new Array(rawMap.length);
+    for(let y = 0; y < rawMap.length; y++){
+      this.map[y] = new Array(rawMap[y].length);
+      for(let x = 0; x < rawMap[y].length; x++ ){
+        this.map[y][x] = transformTile(rawMap[y][x]);
+      }
+    }
+  }
+  // ...
+}
+
+function transformTile(tile: RawTile){
+  // ...
+}
+
+```
+
+</TabItem>
+
+<TabItem value="After">
+
+```typescript
+
+let rawMap: number[][] = [
+  //...
+];
+
+class Map {
+  private map: Tile[][];
+  constructor() {
+    this.map = new Array(rawMap.length);
+    for(let y = 0; y < rawMap.length; y++){
+      this.map[y] = new Array(rawMap[y].length);
+      for(let x = 0; x < rawMap[y].length; x++ ){
+        this.map[y][x] = transformTile(RAW_TITLES[rawMap[y][x]]);
+      }
+    }
+  }
+  // ...
+}
+
+function transformTile(tile: RawTile2){
+  // ...
+}
+
+```
+
+</TabItem>
+
+</Tabs>
+
+在先前重構的過程中，目前的 transformTile 會出錯，主要是因為原本是用 switch case
+為消除這些 switch 以及 enum ，對 RawTile2 進行一次 Push Code Into Classes 
+
+<Tabs>
+<TabItem value="Before">
+
+```typescript
+interface RawTileValue { }
+class AirValue implements RawTileValue { }
+class StoneValue implements RawTileValue { }
+class Key1Value implements RawTileValue { }
+
+class RawTile2 {
+  // ...
+}
+
+function assertExhausted(x: never) : never {
+  throw new Error("Unexpected object: " + x);
+}
+
+function transformTile(tile: RawTile2){
+  switch(tile){
+    case RawTile.AIR:
+      return new Air();
+    case RawTile.STONE:
+      return new Stone(new Resting());
+    // ...
+    default:
+      assertExhausted(tile);
+  }
+}
+
+```
+
+</TabItem>
+
+<TabItem value="After">
+
+```typescript
+
+interface RawTileValue {
+  transform(): Tile;
+}
+
+class AirValue implements RawTileValue {
+  transform() {
+    return new Air();
+  }
+}
+class StoneValue implements RawTileValue {
+  transform() {
+    return new Stone(new Resting());
+  }
+}
+class Key1Value implements RawTileValue {
+  transform() {
+    return new Key1(YELLOW_KEY);
+  }
+}
+
+class RawTile2 {
+  // ...
+  transform() {
+    return this.value.transform();
+  }
+}
+
+function transformTile(tile: RawTile2){
+  return tile.transform();
+}
+
+```
+
+</TabItem>
+
+</Tabs>
+
+如此一來，switch case 與 enum 就可以被消除了，我們將 RawTile2 改為 RawTile 作為正式的類別
+
+
+## 總結
+
+- DO NOT USE GETTERS OR SETTERS：以免暴露 private value ;
+
+=> 可以透過 ELIMINATE GETTER OR SETTER 這個方法來消除
+- NEVER HAVE COMMON AFFIXES：有共同前後綴的方法或變數應該放在同一個類別做管理;
+
+=> 可以透過 ENCAPSULATE DATA 來解決
+- 可以透過 ENFORCE SEQUENCE 強制讓 function 間的執行間有一定的順序
+- 處理 enum 的另一個方法是使用帶有 private constructor 的 class ，同時也可以消除 switch case
