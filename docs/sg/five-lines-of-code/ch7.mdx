@@ -1,0 +1,691 @@
+---
+title: "Ch7: 與編譯器合作"
+sidebar_position: 7
+---
+
+## 7.1 了解編譯器
+### 7.1.1 弱勢：停機問題限制了編譯時期的知識
+
+:::tip
+停機問題（halting problem）就是判斷任意一個程式是否能在有限的時間之內結束執行的問題，
+已經在 1936 年被 Alan Turing 證明這個問題的解法是不存在的。
+
+換句話說，程式是不可預測的。
+:::
+
+```typescript title="Listing 7.1 程式沒有執行時期錯誤"
+if (new Date().getDay() === 35) {
+  5.foo();
+}
+```
+
+getDay 不可能返回 35，因此不論 if 內部是什麼程式碼都不會被執行。
+
+#### 保守分析 (conservative analysis)
+
+有些程式會明確失效而被編譯器拒絕，而另外一些程式一定不會失效，因此會被允許。
+
+然後，停機問題意味著編譯器必須判斷決定要怎麼處理兩者之間的程式：
+* 有時候編譯器會允許可能不符合預期，包括在執行時期失效的程式
+* 有時候如果編譯器無法保證程式是安全的，就會拒絕該程式（這被稱為**保守分析**）
+
+保守分析能證明在程式中某些特定錯誤是不可能發生的。
+
+:::tip
+程式語言定義了自己的語法 (syntax)，而編譯器採用保守分析，檢查語意 (semantic)，進而找出程式中的潛在錯誤
+:::
+
+### 7.1.2 優勢：可達性確保了方法的返回
+
+```typescript title="Listing 7.2 因可達性引起的編譯器錯誤"
+enum Color {
+  RED, GREEN, BLUE
+}
+function assertExhausted(x: never): never {
+  throw new Error("Unexpected object: " + x);
+}
+function handle(t: Color) {
+  if (t === Color.RED) return "#ff0000";
+  if (t === Color.GREEN) return "#00ff00";
+  assertExhausted(t);
+}
+```
+
+利用了 TypeScript 的 never 特性，當程式在可能到達 never 的時候，編譯器會拋出錯誤，讓我們知道程式到了不該到的地方。
+
+此檢查被稱為完整性檢查（exhaustiveness check）。
+
+```typescript
+type Fruit = 'banana' | 'orange' | 'mango';
+
+function exhaustiveCheck(param: never) {}
+
+function makeDessert(fruit: Fruit) {
+  switch (fruit) {
+    case 'banana': return 'Banana Shake';
+    case 'orange': return 'Orange Juice';
+  }
+  exhaustiveCheck(fruit); // 🚫 ERROR! `mango` is not assignable to type `never`
+}
+
+// from https://dev.to/babak/exhaustive-type-checking-with-typescript-4l3f
+```
+
+### 7.1.3 優勢：定義指定值可防止存取未初始化的變數
+
+```typescript title="7.3 未初始化的變數"
+let result;
+for (let i = 0; i < arr.length; i++)
+  if (arr[i].name === "John")
+    result = arr[i];
+return result; // error TS2454: Variable 'result' is used before being assigned.
+```
+
+編譯器會幫忙檢查是否有變數在某些情況下沒有被賦予值。
+
+### 7.1.4 優勢：存取控制有助於封裝資料
+
+```typescript title="7.4 由於存取所造成的編譯器錯誤"
+class Class {
+  private sensitiveMethod() {
+    // ...
+  }
+}
+let c = new Class();
+c.sensitiveMethod(); // error TS2341: Property 'sensitiveMethod' is private and only accessible within class 'Class'.
+```
+
+### 7.1.5 優勢：型別檢查證明特性
+
+```typescript title="Listing 7.5 由於型別所造成的編譯器錯誤"
+interface NonEmptyList<T> {
+  head: T;
+}
+class Last<T> implements NonEmptyList<T> {
+  constructor(public readonly head: T) { }
+}
+class Cons<T> implements NonEmptyList<T> {
+  constructor(
+    public readonly head: T,
+    public readonly tail: NonEmptyList<T>) { }
+}
+function first<T>(xs: NonEmptyList<T>) {
+  return xs.head;
+}
+first([]); // a very long compile error
+```
+
+```typescript title="如何正確使用"
+const singleElementList = new Last(1);
+const longerList = new Cons(2, singleElementList);
+const firstElement = first(longerList); // Returns 2
+```
+
+編譯器有較強的型別檢查能力，但強型別（strongly typed）不是個二元的特行，而是像在光譜上，有較強和較弱的區別。
+
+按強度遞增：
+* 借用型別，Borrowing types (Rust)
+* 多型型別推斷，Polymorphic type inference (OCaml and F#)
+* 型別類別，Type classes (Haskell)
+* 聯合和交集型別，Union and intersection types (TypeScript, Java, and C#)
+* 相依型別，Dependent types (Coq and Agda)
+
+越難越安全...?
+
+### 7.1.6 弱勢：反參照 null 會導致應用程式崩潰
+
+```typescript title="Listing 7.6 潛在的 null 反參照，但編譯器不會回報錯誤"
+function average(arr: number[]) {
+  return sum(arr) / arr.length;
+}
+```
+
+如果使用 `tsc --strict index.ts`，會拿到如下錯誤：
+```
+index.ts:49:16 - error TS2345: Argument of type 'number[] | undefined' is not assignable to parameter of type 'number[]'.
+  Type 'undefined' is not assignable to type 'number[]'.
+
+49     return sum(arr) / arr.length;
+                  ~~~
+
+index.ts:49:23 - error TS18048: 'arr' is possibly 'undefined'.
+
+49     return sum(arr) / arr.length;
+                         ~~~
+```
+
+:::tip
+**十億美元的錯誤**
+
+Tony Hoare 在 1965 年設計 ALGOL W 這個物件導向程式語言時，導入了 null 的概念，後續程式語言紛紛效仿。他同時也是快速排序的發明者。
+
+他在 2009 年時提到：I call it my billion-dollar mistake.
+
+> 我原先目標是要確保所有 reference 都絕對安全，由 compiler 自動檢查型別。但是我抗拒不了把 null reference 加進型別系統裡面的誘惑，因為實作起來實在很簡單。這導致了之後無數的程式錯誤、資安漏洞、系統當機。大概在過去 40 年間造成了業界十億美元的損失與傷害。
+:::
+
+### 7.1.7 弱勢：算術錯誤導致溢位或程式崩潰
+
+編譯器不會檢查算術錯誤相關的問題。
+
+```typescript title="Listing 7.7 潛在除以 0 的問題，但編譯器不會回報錯誤"
+function average(arr: number[]) {
+  return sum(arr) / arr.length;
+}
+```
+
+### 7.1.8 弱勢：越界錯誤導致程式崩潰
+
+```typescript title="Listing 7.8 潛在越界存取的問題，但編譯器不會回報錯誤"
+function firstPrime(arr: number[]) {
+  return arr[indexOfPrime(arr)];
+}
+```
+
+如果 `indexofPrime` 找不到而回傳 -1，則會引起錯誤。
+
+:::tip
+這種行為在 C/C++ 的執行時期不會引發錯誤，有潛在的資訊安全風險，同時這也被定義在 CWE-125: Out-of-bounds Read
+
+> Typically, this can allow attackers to read sensitive information from other memory locations or cause a crash. A crash can occur when the code reads a variable amount of data and assumes that a sentinel exists to stop the read operation, such as a NUL in a string. The expected sentinel might not be located in the out-of-bounds memory, causing excessive data to be read, leading to a segmentation fault or a buffer overflow. The product may modify an index or perform pointer arithmetic that references a memory location that is outside of the boundaries of the buffer. A subsequent read operation then produces undefined or unexpected results.
+:::
+
+### 7.1.9 弱勢：無窮迴圈
+
+```typescript title="Listing 7.9 有無窮迴圈的問題，但編譯器不會回報錯誤"
+let insideQuote = false;
+let quotePosition = s.indexOf("\"");
+while(quotePosition >= 0) {
+  insideQuote = !insideQuote;
+  quotePosition = s.indexOf("\"");
+}
+```
+
+這段程式碼想看雙引號是否成對出現，但忘記設定迴圈中的開始位置，只要裡面有一個雙引號，就變成無限迴圈。
+
+這類問題在 while 最容易出現，後來的 for，再演變到 foreach，慢慢降低這個問題的發生。
+
+### 7.1.10 弱勢：死鎖和競爭條件導致意外行為
+
+多執行緒雖然能提昇程式效能，但較為複雜的狀態也容易導致問題出現，例如 race cnodition, deadlock, starvation 等等。
+
+#### Race Condition
+
+兩個 thread 同時讀取 `number`，拿到一樣的值，印出，再加一。
+
+<Row>
+<Col col={2}>
+
+```typescript title="7.10 競爭條件的虛擬程式碼"
+class Counter implements Runnable {
+  private static number = 0;
+
+  run() {
+    for (let i = 0; i < 10; i++)
+      console.log(this.number++);
+  }
+}
+
+let a = new Thread(new Counter());
+let b = new Thread(new Counter());
+
+a.start();
+b.start();
+```
+
+</Col>
+<Col col={2}>
+
+```typescript title="Listing 7.11 範例輸出"
+1
+2
+3
+4
+5
+5  // 錯誤
+7
+8
+...
+```
+
+</Col>
+</Row>
+
+#### Deadlock
+
+為了不要讓兩個 thread 同時讀取，分別加上一個鎖，拿到鎖的人才能讀取和寫入。
+
+導致當兩個 thread 都各自拿到自己的鎖、而等不到對方釋放鎖，兩者都無法繼續執行，稱為死鎖。
+
+有個常見的比喻是，兩個人在門口相遇，都堅持對方先進去。
+
+<Row>
+<Col col={2}>
+
+```typescript title="Listing 7.12 死鎖的虛擬程式碼"
+class Counter implements Runnable {
+  private static number = 0;
+  constructor(private mine: Lock, private other: Lock) {}
+
+  run() {
+    for (let i = 0; i < 10; i++) {
+      mine.lock();
+      other.waitFor();
+      console.log(this.number++);
+      mine.free();
+    }
+  }
+}
+
+let aLock = new Lock();
+let bLock = new Lock();
+let a = new Thread(new Counter(aLock, bLock));
+let b = new Thread(new Counter(bLock, aLock));
+
+a.start();
+b.start();
+```
+
+</Col>
+<Col col={2}>
+
+```typescript title="Listing 7.13 範例輸出"
+1
+2
+3
+4
+// 後面沒有輸出，卡死了
+...
+```
+
+</Col>
+</Row>
+
+#### Starvation
+
+較少發生的情況，可以比喻成單行道的橋，有一側需要等待，而另一側的車流從未停止。
+
+<Row>
+<Col col={2}>
+
+```typescript title="Listing 7.14 飢餓的虛擬程式碼"
+class Printer implements Runnable {
+  constructor(private name: string, private mine: Lock, private other: Lock) {}
+
+  run() {
+    while(true) {
+      other.waitFor();
+      mine.lock();
+      console.log(this.name);
+      mine.free();
+    }
+  }
+}
+
+let aLock = new Lock();
+let bLock = new Lock();
+let a = new Thread(new Printer("A", aLock, bLock));
+let b = new Thread(new Printer("B", bLock, aLock));
+
+a.start();
+b.start();
+```
+
+</Col>
+<Col col={2}>
+
+```typescript title="Listing 7.15 範例輸出"
+A
+A
+A
+A
+// B 一直沒機會執行，被餓死了
+...
+```
+
+</Col>
+</Row>
+
+## 7.2 使用編譯器
+
+### 7.2.1 讓編譯器能好好工作
+
+#### 把編譯器當作代辦事項清單，增加程式碼的安全性
+
+想要進行修改時，重新命名程式碼，編譯器就會告訴我們哪些位置需要調整。
+
+```typescript title="Listing 7.16 利用編譯器的錯誤來尋找有使用 enum 的位置"
+enum Color_handled {
+  RED, GREEN, BLUE
+}
+function toString(c: Color) {
+  switch (c) {
+    case Color.RED: return "Red";
+    default: return "No color";
+  }
+}
+```
+
+#### 使用強制循序來增加程式碼的安全性
+
+把要做的事情塞進建構子，讓程式在執行的時候不可能跳過他們。
+
+以下是第六章中的例子：
+
+<Row>
+<Col col={2}>
+
+```typescript title="Listing 7.17 內部"
+class CapitalizedString {
+  private value: string;
+  constructor(str: string) {
+    this.value = capitalize(str);
+  }
+  print() {
+    console.log(this.value);
+  }
+}
+```
+
+</Col>
+<Col col={2}>
+
+```typescript title="Listing 7.18 外部"
+class CapitalizedString {
+  public readonly value: string;
+  constructor(str: string) {
+    this.value = capitalize(str);
+  }
+}
+function print(str: CapitalizedString) {
+  console.log(str.value);
+}
+```
+
+</Col>
+</Row>
+
+#### 使用強制封裝來增加程式碼的安全性
+
+一樣是回顧第六章的轉帳範例，把邏輯包裝在類別裡面，透過對外的界面來確保開發人員在使用的時候不會搞錯。
+
+```typescript title="Listing 7.19 私人的輔助方法"
+class Transfer {
+  constructor(from: string, private amount: number) {
+    this.depositHelper(from, -this.amount);
+  }
+  private depositHelper(to: string, amount: number) {
+    let accountId = database.find(to);
+    database.updateOne(accountId, { $inc: { balance: amount } });
+  }
+  deposit(to: string) {
+    this.depositHelper(to, this.amount);
+  }
+}
+```
+
+#### 利用編譯器刪除沒用到的程式碼來增加安全性
+
+如果不小心刪到有使用的程式碼，編譯器會跳錯誤，因此我們可以透過這個特性，放心刪除覺得沒用到的程式碼。
+
+例如下面 interface A 的 m2 和 class B 的 m3。
+
+```typescript title="Listing 7.20 可刪除方法的範例"
+interface A {
+  m1(): void;
+  m2(): void;
+}
+class B implements A {
+  m1() { console.log("m1"); }
+  m2() { this.m3(); }
+  m3() { console.log("m3"); }
+}
+let a = new B();
+a.m1();
+```
+
+#### 利用明確的值來增加程式碼的安全性
+
+由於 TypeScript 在建構子有特殊的語法糖，能確保傳進來的參數會被賦值到私有變數身上，以避免產生一個未知狀態的物件。
+
+想強調編譯器能透過語法規範來幫忙檢查程式碼。
+
+```typescript title="Listing 7.21 使用唯獨欄位實現了不能為空的串列"
+interface NonEmptyList<T> {
+  head: T;
+}
+class Last<T> implements NonEmptyList<T> {
+  constructor(public readonly head: T) {}
+}
+class Cons<T> implements NonEmptyList<T> {
+  constructor(
+    public readonly head: T,
+    public readonly tail: NonEmptyList<T>,
+  ) {}
+}
+```
+
+### 7.2.2 不要和編譯器對抗
+
+#### 型別
+
+大部分的人會以這三種方式誤用型別檢查器
+
+* 型別轉換
+
+使用型別轉換就像給一個長期疼痛的人吃止痛藥，可以暫時緩解痛楚，但無法解決根本問題。
+
+```typescript title="Listing 7.22 型別轉換"
+let num = <number> JSON.parse(variable);
+```
+
+如果輸入來自第三方，最安全的解決方案是**使用自訂解析器**來處理輸入。
+
+```typescript title="Listing 7.23 從字串解析輸入到自訂型別"
+window.addEventListener("keydown", e => {
+  if (e.key === LEFT_KEY || e.key === "a") inputs.push(new Left());
+  else if (e.key === UP_KEY || e.key === "w") inputs.push(new Up());
+  else if (e.key === RIGHT_KEY || e.key === "d") inputs.push(new Right());
+  else if (e.key === DOWN_KEY || e.key === "s") inputs.push(new Down());
+});
+```
+
+* 動態型別
+
+比如停用型別檢查，更糟的是**真正**停用型別檢查。以 TypeScript 的角度來說，就是把每個參數的型態標記成 `any`，讓編譯器跳不出錯誤。
+
+```typescript title="Listing 7.24 使用 any 型別"
+(<any> arr).findIndex(x => x === 2);
+```
+
+* 執行時期型別
+
+最糟的是，使用 map 傳遞所有參數，讓編譯器看不出每個參數實際的型別。
+
+```typescript title="Listing 7.25 執行時期型別"
+function stringConstructor(conf: Map<string, string>, parts: string[]) {
+  return conf.get("prefix") + parts.join(conf.get("joiner")) + conf.get("postfix");
+}
+```
+
+較安全的方式是建立一個具有特定欄位的物件。
+
+```typescript title="Listing 7.26 靜態型別"
+class Configuration {
+  constructor(
+    public readonly prefix: string,
+    public readonly joiner: string,
+    public readonly postfix: string,
+  ) {}
+}
+
+function stringConstructor(conf: Configuration, parts: string[]) {
+  return conf.prefix + parts.join(conf.joiner) + conf.postfix;
+}
+```
+
+#### 懶惰
+
+我們很樂意花費數小時或數周的時間來自動化處理懶的做的事情，懶惰讓我們成為更好的程式設計師，但如果一直保持懶惰下去，有可能會讓我們成為很糟糕的程式設計師。
+
+* 預設值
+
+新增預設值之前，要仔細思考過他的合理性，否則可能在之後造成負面影響。
+
+```typescript title="Listing 7.27 由於預設引數所造成的 bug"
+class Animal {
+  constructor(name: string, isMammal = true) { ... }
+}
+let nemo = new Animal("Clown fish"); // 小丑魚變成哺乳動物了
+```
+
+* 繼承
+
+繼承就是把父類別的行為當作預設值。呼應到最一開始的「用組合取代繼承」。
+
+```typescript title="Listing 7.28 由於繼承所造成的問題"
+class Mammal {
+  laysEggs() { return false; }
+}
+class Dolphin extends Mammal { }
+/// ...
+class Platypus extends Mammal { } // 鴨嘴獸是少數會下蛋的哺乳類動物
+```
+
+* 非受檢例外
+
+因為 TypeScript 沒有這種東西，以 Java 舉例。
+
+受檢例外（checked exception）：函數會標記它會拋出什麼例外，而呼叫方必須要處理的例外，比如說 Java 的 IOException
+
+```java title="受檢例外"
+public class Main {
+  private String readFile(String path) throws IOException {
+    // read file
+  }
+
+  public static void main(String[] args) {
+    try {
+      System.out.println(readFile("/path/to/file.json"));
+    } catch (IOException e) {
+      System.out.println("Something wrong when read file", e);
+    }
+  }
+}
+```
+
+非受檢例外（unchecked exception）：不必標記在函數上的例外，比如說 Java 的 RuntimeException
+
+```java title="非受檢例外"
+public class Main {
+  private String readFile(String path) {
+    try {
+      // read file
+    } catch (IOExeption e) {
+      throw new RuntimeException(e)
+    }
+  }
+
+  public static void main(String[] args) {
+    System.out.println(readFile("/path/to/file.json"));
+  }
+}
+```
+
+非受檢例外可能會讓程式錯過一些情況，而讓系統崩潰，因此還是建議在有受檢例外的語言中，盡量使用這個特性。
+
+* 架構
+
+大家在對抗妨礙編譯器協助的第三種方式是因為對架構（特別是微架構）的理解不足，微架構（micro-architecture）是會影響自己團隊但不會影響其他團隊的架構。
+
+```typescript title="Listing 7.31 帶有 getter 的不良微架構"
+class Stack<T> {
+  private data: T[];
+  getArray() { return this.data; }
+}
+stack.getArray()[0] = newBottomElement; // 這行改變了 stack 的狀態
+```
+
+```typescript title="Listing 7.31 帶有參數的不良微架構"
+class Stack<T> {
+  private data: T[];
+  printLast() { printFirst(this.data); }
+}
+function printFirst<T>(arr: T[]) {
+  arr[0] = newBottomElement; // 這行改變了 stack 的狀態
+}
+```
+
+```typescript title="推薦傳入 this"
+class Stack<T> {
+  private data: T[];
+  printLast() { printFirst(this); }
+}
+function printFirst<T>(stack: Stack<T>) {
+  ??
+}
+```
+
+### 7.3 信任編譯器
+
+不要覺得自己比編譯器更了解程式，密切注意編譯器回應的內容，我們會因為付出而得到回報。
+
+#### 7.3.1 教會編譯器不變條件
+
+```typescript title="Listing 7.34 隨機挑選一個元素（錯誤版）"
+class CountingSet {
+  randomElement(): string {
+    let index = randomInt(this.total);
+    for (let key in this.data.keys()) {
+      index -= this.data[key];
+      if (index <= 0)
+        return key;
+    }
+    // error TS2366: Function lacks ending return statement and return type does not include 'undefined'.
+  }
+}
+```
+
+加上一個例外，讓編譯器不再丟出錯誤。
+
+```typescript title="Listing 7.35 隨機挑選一個元素（修正版）"
+class Impossible {}
+class CountingSet {
+  randomElement(): string {
+    let index = randomInt(this.total);
+    for (let key in this.data.keys()) {
+      index -= this.data[key];
+      if (index <= 0)
+        return key;
+    }
+    throw new Impossible(); // 讓編譯器不再抱怨
+  }
+}
+```
+
+當我們在程式中有這種情況出現時，有幾種策略：
+
+1. 消除這些錯誤/問題
+2. 教導編譯器認識他們（如 7.35）
+3. 撰寫自動化測試消除疑慮
+4. 寫文件讓其他開發者了解
+5. 增加手動測試項目
+6. 祈禱
+
+如果軟體的生命週期很短，可以選擇清單較下方的選項。比如說 prototype 可以用手動測試就好，不需要花時間開發自動化測試。
+
+#### 7.3.2 請留意警告的訊息
+
+盡量消除看到的警告，一旦出現警報疲勞（alarm fatigue），程式品質就會越來越差了
+
+### 7.4 完全信任編譯器
+
+編譯器無法知道程式碼是否解決了我們期望的問題，但他能告訴我們這隻程式是否會崩潰當掉。
+
+:::tip
+linter 也同樣重要
+:::
+
+作者認為我們應該要保持好奇心，尊重編譯器的輸出：
+
+> If you're the smartest person in the room, you're in the wrong room.
