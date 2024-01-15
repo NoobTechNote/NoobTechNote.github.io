@@ -1,0 +1,79 @@
+---
+title: "Ch8: 遠離註釋"
+sidebar_position: 8
+---
+
+## 觀念
+### 本文討論的是function內的註釋
+### 應該要避免用註釋(Rob Pike, 1989)
+- 好的實作或function可以self describing
+- 註釋不會被編譯器檢查
+- 排版容易雜亂
+### 應僅在code無法表達之處使用註釋(Kevlin Henney)
+
+## 8.1 刪除過時的註釋
+```java title="8.1 Outdated Comment"
+if (element.hasSelection() || element.isMultiSelect()) { // Is has a selection and allows multi selection
+	// ...
+}
+```
+
+## 8.2 刪除被註釋掉的代碼
+```java title="8.2 Commented-out code"
+const PHI = (1 + Math.sqrt(5)) / 2; 
+const PHI_ = (1 - Math.sqrt(5)) / 2; 
+const C = 1 / Math.sqrt(5);
+
+function fib(n: number) {
+    // if(n <= 1) return n;
+    // else return fib(n-1) + fib(n-2);
+    return C * (Math.pow(PHI, n) - Math.pow(PHI_, n));
+}
+```
+- 剛開始試運行註釋的Code，但是找到更好的實作，但對改善的Code沒有信心所以都保留
+- 建議可以開branch實作新的，如果stable就merge，否則就保留既有的
+
+## 8.3 删除瑣碎的註釋
+```java title="8.3 Trivial comment"
+// Log error
+Logger.error(errorMessage, e);
+```
+- Code可以self describing，註釋其實是沒有用處的
+
+## 8.4 將註釋轉化為方法名稱
+```java title="8.4 Comment documenting the code"
+// Build request url
+if (queryString) {
+    fullUrl += "?" + queryString;
+}
+```
+
+```java title="8.4.1 After"
+// Build request url
+fullUrl = buildRequestUrl(fullUrl, queryString);
+```
+- 大家習慣在實作複雜邏輯透過註釋標記每個block要實現的內容
+- 方法實現之後，註釋就會變得多餘，就可以刪除
+
+## 8.5 保留記錄不變量的註釋
+```java title="8.5 Comment documenting an invariant"
+// Log off used to force re-authentication on next request
+session.logout();
+```
+- 這個註釋是否會阻止某人引入錯誤？
+  - 檢查是否可以將它們轉化為Code
+  - 是否可以製作一個自動化測試來驗證這個不變量
+- 如果這兩者都不可行，我們保留註釋
+
+### 8.5.1 實作流程上的不變量
+- TODO / FIXME / HACK
+- 作者認為可以有，但是要有指標監控這些註釋在減少
+
+## Summary
+- 開發過程中註釋可能有幫助，但是要在交付時檢查把不必要的刪掉
+- 介紹了五大類註釋
+  - 過時的註釋應該被刪除，因為它們可能導致錯誤。
+  - 被註釋掉的Code應該被刪除，因為Code已經存在於版本控制中。
+  - 瑣碎的註釋應該被刪除，因為它們不增加可讀性。
+  - 可以作為方法名的註釋應該變成方法名。
+  - 記錄非局部不變量的註釋應該轉化為Code或自動化測試；否則，我們保留註釋。
