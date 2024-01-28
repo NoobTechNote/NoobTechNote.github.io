@@ -1,0 +1,380 @@
+---
+title: "Ch12: 避免最佳化和通用性"
+sidebar_position: 12
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+## 最佳化和通用性
+
+* 最佳化 (Optimization)
+    * 最佳化程式碼執行效能
+* 通用性 (Generality)
+    * 讓程式碼含有更多功能
+    * 給廚師一把瑞士刀或是菜刀
+    * 因應通用性的設計，可能會比通用性帶來的好處更為繁重
+
+## 力求簡潔
+
+* 人類的認知能力有限
+    * 一次只能記住「有限」的資訊量
+    * 一般來說，與沒有時常互動的code，超過三個月就很難記得改動細節
+* 程式碼會佔據工程師認知能力的事物：
+    * 耦合的元件 (coupled components)
+    * 不變的條件 (invariants)
+
+### 追求通用性造成的問題1 - 耦合的元件
+
+```typescript
+function remove(tile: Tile) {
+    for (let y = 0; y < map.length; y++) {
+        for (let x = 0; x < map[y].length; x++) {
+            if (map[y][x] === tile) { // tile跟map[y][x]的「相等」具體參考了多少tile內的細節？
+                map[y][x] = new Air();
+            }
+        }
+    }
+}
+```
+
+### 追求通用性造成的問題2 - 不變的條件
+
+```typescript
+class Stack {
+    private data: number[] = [];
+    private length: number;
+
+    add(num: number) {
+        this.data.unshift(num);
+        this.length += 1;
+    }
+
+    pop(num: number) {
+        if (this.length <= 0) {
+            throw new Error("Pop from empty stake");
+        }
+        this.length -= 1; // 要是你忘記減的話...
+        return this.data.shift();
+    }
+
+    getSize() {
+        return this.length;
+    }
+}
+```
+
+
+## 通用性的時機與做法
+
+* 「這兩段code做的事很像，所以抽出來成為獨立的function」
+    * 他們是「需要很像」，還是現在「恰好很像」？
+* 進行通用性設計前，更重要的是要了解要這麼做的**「動機」**
+    * 要做菜，你真的不能使用一把瑞士刀嗎？
+    * 想把code設計成瑞士刀，要有正確的「動機」
+
+* 以下是幾個「適合進行通用性設計」的動機
+
+### 1. 為了最小化構建 (Build minimally)
+
+* Kent Beck的建議 - 最小化你寫的code的量
+* 多花時間去解決「真正的問題」而不是「想像中的問題」
+
+:::info Discussion
+要寫一個西洋棋遊戲程式，第一步該如何抽象化？
+
+:::
+
+### 2. 整合有相似穩定性的事物 (Similar Stability)
+
+* 以乒乓球計分程式為例
+    * 對於支援函式、後端的程式碼，不得不進行泛化通用的處理
+    * 出於「降低認知負擔」的目的
+* 謹慎行事，泛化做下去後很難消除其帶來的影響
+* 大部分的時候，很難辨認出來哪些事物有「相似的穩定性」
+    * 經驗上的建議，不要立即把新的事物跟舊的事物整合在一起
+
+### 3. 定期檢查併消除不必要的通用性
+
+* 使用本書提過的兩個重構規則
+    * Ch4.2.2 特定化方法 [(Specialize Method)](/docs/sg/five-lines-of-code/ch4#422-%E9%87%8D%E6%A7%8B%E6%A8%A1%E5%BC%8F%E7%89%B9%E5%AE%9A%E5%8C%96%E6%96%B9%E6%B3%95specialize-method)
+    * Ch4.5 嘗試刪除後再編譯 [(Try Delete Then Compile)](/docs/sg/five-lines-of-code/ch4#451-%E9%87%8D%E6%A7%8B%E6%A8%A1%E5%BC%8F%E5%88%AA%E9%99%A4%E5%BE%8C%E5%86%8D%E7%B7%A8%E8%AD%AFtry-delete-then-compile)
+* 一個有效的作法，埋log監看檢查傳送給function的parameters
+    * 如果發現有一段時間都出現相同的value，那就該進行重構消除這個parmeter
+
+    ```typescript
+    function plus(summand: int, addend: int, config: PlusConfig = {}) {
+        // Monitor params
+        monitor(summand, addend, config)
+
+        if (config.isTestMode) {
+            console.debug(`Plus called on ${summand}, ${addend}`);
+        }
+        return summand + addend;
+    }
+    ```
+
+
+## 最佳化的時機與做法
+
+### 最佳化帶來高度的認知負擔
+
+* 最佳化的程式碼（有較好的執行期效能）會帶來高度的認知負擔
+* 舉例來說：[反平方根快速演算法](https://zh.wikipedia.org/zh-tw/%E5%B9%B3%E6%96%B9%E6%A0%B9%E5%80%92%E6%95%B0%E9%80%9F%E7%AE%97%E6%B3%95)
+    * 以雷神之鎚III的code作為例子：[Q_rsqrt in Quake-III-Arena](https://github.com/id-Software/Quake-III-Arena/blob/master/code/game/q_math.c#L552)
+
+    ```c
+    float Q_rsqrt( float number )
+    {
+        long i;
+        float x2, y;
+        const float threehalfs = 1.5F;
+
+        x2 = number * 0.5F;
+        y  = number;
+        i  = * ( long * ) &y;						// evil floating point bit level hacking
+        i  = 0x5f3759df - ( i >> 1 );               // what the fuck?
+        y  = * ( float * ) &i;
+        y  = y * ( threehalfs - ( x2 * y * y ) );   // 1st iteration
+
+        return y;
+    }
+    ```
+
+### 時機 - 何時推動最佳化
+
+* 設定效能自動測試
+* 只有在效能測試「失敗」時，才進行最佳化的處理
+    * **在程式碼尚未被證明有問題之前，都是合法的**
+    * 跟法律界的做法相似
+
+#### 1. 基準測試 (Benchmark Test)
+
+**「這個method應該要在14ms內執行完畢」**
+
+* 測試本身的編寫很容易，執行卻很困難
+    * 實際狀況與執行環境緊密結合
+* 在嵌入式系統很常見
+* 只在可靠的線上環境進行基準測試
+
+:::info 基準測試的「基準」該如何制定？
+上面例子中，為什麼是定14ms而不是100ms或1ms？
+
+參考：
+* [Datadog Distribution Aggregation](https://docs.datadoghq.com/metrics/distributions/)
+* [Datadog Burn Rate Alerts](https://docs.datadoghq.com/service_management/service_level_objectives/burn_rate/)
+:::
+
+
+#### 2. 負載測試 (Load Test)
+
+「這個服務要能處理每秒1000個請求」
+
+* 測試本身對環境的要求沒有基準測試嚴苛
+    * 但仍可能需要在接近線上環境的基礎上進行測試
+* 註：通常是打到掛，來抓出水位...
+
+#### 3. 效能認證測試 (Performance Approval Test)
+
+「這個測試的速度不應比上次慢超過10%」
+
+* 確保效能不會突然下降
+* 上次 = 上個版本。不是指上一次請求的響應速度
+* 避免工程師意外將過慢的元素加入到主要結構之中
+* 與外部因素、環境，相關性較低
+
+### 做法 - 推動最佳化
+
+#### 1. 開始最佳化前先重構
+
+* 由於最佳化需要依賴程式碼中的「[不變部分](/docs/sg/five-lines-of-code/ch12#%E8%BF%BD%E6%B1%82%E9%80%9A%E7%94%A8%E6%80%A7%E9%80%A0%E6%88%90%E7%9A%84%E5%95%8F%E9%A1%8C2---%E4%B8%8D%E8%AE%8A%E7%9A%84%E6%A2%9D%E4%BB%B6)」
+* 進行過良好重構的程式碼，進行最佳化是更容易完成的
+
+<Tabs>
+<TabItem value="Before" default>
+
+```typescript
+class NumberSequence {
+    constructor(private arr: number[]) {
+
+    }
+    sum() {
+        return this.arr.reduce((acc, num) => acc + num, 0);
+    }
+    size() {
+        return this.arr.length;
+    }
+    average() {
+        return this.sum() / this.size();
+    }
+}
+```
+
+</TabItem>
+<TabItem value="After">
+
+```typescript
+class NumberSequence {
+    constructor(private arr: number[]) {
+        this.total = arr.reduce((acc, num) => acc + num, 0);
+    }
+    sum() {
+        return this.total;
+    }
+    size() {
+        return this.arr.length;
+    }
+    average() {
+        return this.sum() / this.size();
+    }
+}
+```
+
+</TabItem>
+</Tabs>
+
+* 或是，讓編譯器幫你處理最佳化
+
+<Row>
+<Col col={2}>
+
+```typescript title=Before
+return pow(base, exp/2) * pow(base, exp/2);
+
+```
+
+</Col>
+<Col col={2}>
+
+```typescript title=After
+let result = pow(base, exp/2);
+return result * result;
+```
+
+</Col>
+</Row>
+
+* 不要炫耀，編譯器通常都幫你做了
+
+<Row>
+<Col col={2}>
+
+```typescript title=Before
+return n/2;
+
+// 邏輯要跟重構後一樣的話應該要寫這樣
+// return Math.floor(n / 2);
+```
+
+</Col>
+<Col col={2}>
+
+```typescript title=After
+return n >> 1;
+
+// 或是更難懂的
+return n/2 | 0;
+```
+
+</Col>
+</Row>
+
+#### 2. 依據理論限制進行最佳化
+
+* Resource Pool
+* 概念參考：
+    * [Connection Pool](http://javainsimpleway.com/connection-pool-overview/) - by Java In Simple Way
+    * [PHP FPM Architecture](https://www.lucavall.in/blog/how-to-optimize-php-performance-on-google-cloud-run) - by Lucavall
+
+
+#### 3. 以度量指標來主導最佳化
+
+* 瓶頸處之外的效能改善都是多餘的
+    * 找出真正該改善之處，需要有度量指標
+* 發現程式碼的「熱點」(Hot Spots)
+    * 效能分析 (Profiling)
+    * 漸進分析 (Big-O)
+        * 依賴程式設計師的演算法與資料結構熟練度
+        * 註：要能識別哪個N是重要的，也需要領域知識的了解
+
+#### 4. 選用好的演算法與資料結構
+
+* 評估出「熱點後」最安全的最佳化做法：把資料結構改成有相等介面的另一個資料結構
+    * 註：[Array](https://zh.wikipedia.org/zh-tw/%E6%95%B0%E7%BB%84)跟[BST](https://zh-yue.wikipedia.org/wiki/%E4%BA%8C%E5%85%83%E6%90%9C%E5%B0%8B%E6%A8%B9)兩種結構都有insert, select的介面
+* 引入後，不變條件有可能被破壞
+    * 「[效能認證測試](/docs/sg/five-lines-of-code/ch12#3-%E6%95%88%E8%83%BD%E8%AA%8D%E8%AD%89%E6%B8%AC%E8%A9%A6-performance-approval-test)」能夠抓得出來
+    * 因為介面沒變，切換資料結構或演算法很容易
+
+
+
+<Row>
+<Col col={2}>
+
+```typescript title=Before
+function unique(arr: number[]): number[] {
+    let result = [];
+    for (let i=0 ; i<arr.length ; i++) {
+        if result.includes(arr[i]) {
+            continue;
+        }
+        result.push(arr[i]);
+    }
+    return result;
+}
+```
+
+</Col>
+<Col col={2}>
+
+```typescript title=After
+function unique(arr: number[]): number[] {
+    return Array.from(new Set(arr));
+}
+
+
+
+
+
+
+
+```
+
+</Col>
+</Row>
+
+> 註：書中原例為對Link List排序時，將其轉為Array排序後再轉回Link List，效率比較高。但這個例子，空間複雜度差異被忽略。
+
+#### 5. 快取
+
+* 將重複用到的計算結果存起來
+    * 犧牲空間換時間的做法
+* 例子參考上節：[NumberSequence](/docs/sg/five-lines-of-code/ch12#1-開始最佳化前先重構)
+    * total的值可以不用重複計算
+* 快取對「冪等不變條件 (idempotence inveariant)」結合時，是安全做法
+    * 冪等，即你每次用同樣的參數進行呼叫，結果總是會相同
+
+> 註：但若討論到「什麼時候該更新cache」就是困難的題目了。
+> 參考：[On-Daemon Look-Aside-Cache](https://dl.acm.org/doi/pdf/10.1145/3468521)
+
+#### 6. 隔離最佳化過的程式碼
+
+* 利用method、class，來最小化上鎖的區域
+    * 降低認知負擔 - 給他一個好名字
+        * 例如：Q_rsqrt
+    * OCP：對實做封閉，對擴展開放
+    * 若處理得好，就沒有人有興趣去看原始碼的實作
+
+* 用套件來警告未來的開發人員
+    * 包含未來的自己
+* 作者習慣：取名叫做「magic」
+    * 先進的科技與魔法無異
+    * 例如：`magic_bit = 0x5f3759df;`
+
+## 總結
+
+* 間單化：指的是減少閱讀程式碼的認知負擔
+* 通用性，會增加耦合的風險
+    * 要避免引入「不必要」的通用性
+    * 換句話說，非「必要」不要對程式進行泛化通用性的重構
+* 進行效能調校時，要將其隔離開來
+    * 不要設計讓未來的人需要去看這段code才能理解其「用途」
