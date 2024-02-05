@@ -1,0 +1,513 @@
+---
+title: "Ch13: 讓不良的程式碼凸顯出來"
+sidebar_position: 13
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+
+## 反重構
+
+* 將不良的程式碼凸顯出來，能一眼看出的做法
+* 在確保不會破壞程式碼的前提下，故意將程式寫爛
+
+## 發出流程問題的訊號
+
+* 我們沒辦法總是將程式寫得好
+    * 程式碼或問題本身的複雜性
+    * 時間不夠
+    * 不確定該怎麼做
+* 交付「糟糕的程式碼」會比交付「將問題隱藏起來的程式碼」來的好
+
+:::info Discussion
+下列兩個範例，哪個比較好？
+:::
+
+<Row>
+<Col col={2}>
+
+```typescript title="Example1"
+function animate() {
+    handleChosen();
+    handleDisplaying();
+    handleCompleted();
+    handleMoving();
+}
+
+function handleChosen() {
+    if (value >= threshold
+     && banner.state === "chosen") {
+        // ...
+    }
+}
+
+function handleDisplaying() {
+    if (value >= target
+     && banner.state === "displaying") {
+        // ...
+    }
+}
+
+function handleCompleted() {
+    if (banner.state === "completed") {
+        // ...
+    }
+}
+```
+
+</Col>
+<Col col={2}>
+
+```typescript title="Example2"
+function animate() {
+    // FIXME: All concern banner.state
+    if (value >= threshold
+     && banner.state === State.Chosen) {
+        // ...
+    }
+    if (value >= target
+     && banner.state === State.Displaying) {
+        // ...
+    }
+    if (banner.state === State.Completed) {
+        // ...
+    }
+}
+```
+
+</Col>
+</Row>
+
+## 分離優質和遺留程式碼
+
+* 程式碼越糟，就越容易被發現
+    * 不可能寫出沒有問題的程式碼
+    * 迅速發現問題很重要
+* 「如果沒有辦法做得很好，就讓他顯眼一點」
+* **Quite good > Bad > Good enough**
+* 重構是連鎖反應
+    * 為了讓程式碼變好，意味著需要讓周圍的程式碼也變好
+* 為了避免「破窗效應」
+    * 💔 反正這裡的code寫得很糟，我寫糟在旁邊也不會怎麼樣
+    * ✅ 把好的code和壞的code分開放，在好code的旁邊會減少出現糟糕的code的機會
+
+## 不良程式碼的特徵
+
+### 簡單而具體 - 本書的規則
+
+```typescript title="違背良好規則的程式碼"
+function minimum(arr: number[][]) {
+    let result = 99999;
+    for (let x = 0; x < arr.length; x++) {
+        for (let y = 0; y < arr[x].length; y++) {
+            if (arr[x][y] < result)
+                result = arr[x][y];
+            }
+    }
+    return result;
+}
+```
+
+* 「[五行規則](/docs/sg/five-lines-of-code/ch3#311-rule-five-lines)」
+* 「[僅在開頭使用if](/docs/sg/five-lines-of-code/ch3#311-rule-five-lines)」
+
+
+### 程式碼異味
+
+* 簡單的異味：「魔法數字」「重複的程式碼」
+* 有的很難，需要練習重構一段時間才會吸引你的目光
+
+```typescript
+function minimum(arr: number[][]) {
+    let result = 99999;  // Bad smells: Magic number
+    for (let x = 0; x < arr.length; x++) {
+        for (let y = 0; y < arr[x].length; y++) {
+            if (arr[x][y] < result)
+                result = arr[x][y];
+        }
+    }
+    return result;
+}
+```
+
+### 循環複雜度 - 客觀指標
+
+* 一個迴圈、一個if，都會增加循環複雜度(cyclomatic complexity)
+* 通常可以用縮排深度計算
+
+```typescript
+function minimum(arr: number[][]) { // +1
+    let result = 99999;
+    for (let x = 0; x < arr.length; x++) { // +1
+        for (let y = 0; y < arr[x].length; y++) { // +1
+            if (arr[x][y] < result) // +1
+                result = arr[x][y];
+        }
+    }
+    return result;
+}
+// total cyclomatic complexity = 4
+```
+
+### 認知複雜度 - 主觀指標
+
+* 「讀取這段code的用途，需要在腦袋中記住多少資訊量」
+* 更接近人們閱讀code的評估
+
+```typescript
+function minimum(arr: number[][]) {
+    let result = 99999;
+    for (let x = 0; x < arr.length; x++) { // +1
+        for (let y = 0; y < arr[x].length; y++) { // +2
+            if (arr[x][y] < result) // +3
+                result = arr[x][y];
+        }
+    }
+    return result;
+}
+// total cognitive complexity = 6
+```
+
+## 破壞程式碼
+
+1. <span style={{color: "#33a8ff"}}>不要破壞正確的資訊</span>
+2. <span style={{color: "#33a8ff"}}>不要讓未來的重構變困難</span>
+3. <span style={{color: "#33a8ff"}}>結果應該要引人注目</span>
+
+
+### 使用enum (4.1.3的反重構)
+
+1. enum有名稱，將資訊保留下來
+2. 對enum的重構有既定的標準流程
+    1. 「[使用類別替代型別](/docs/sg/five-lines-of-code/ch4#413-replace-type-code-with-classes)」
+    2. 「[把程式碼移到類別中](/docs/sg/five-lines-of-code/ch4#414-pushing-code-into-classes)」
+    3. 「[嘗試刪除後再編譯](/docs/sg/five-lines-of-code/ch4#451-重構模式刪除後再編譯try-delete-then-compile)」
+3. Enum很引人注目
+
+
+<Row>
+<Col col={2}>
+
+```typescript title="Before"
+class Package {
+    private priority: boolean; scheduleDispatch() {
+        if (this.priority)
+            dispatchImmediately(this);
+        else
+            queue.push(this);
+    }
+}
+
+
+
+
+```
+
+</Col>
+<Col col={2}>
+
+```typescript title="After"
+enum Importance {
+    Priority,
+    Regular
+}
+class Package {
+    private priority: Importance; scheduleDispatch() {
+        if (this.priority === Importance.Priority)
+            dispatchImmediately(this);
+        else
+            queue.push(this);
+    }
+}
+```
+
+</Col>
+</Row>
+
+### 使用整數和字串作為型別碼
+
+<Row>
+<Col col={2}>
+
+```typescript title="String as Type"
+
+
+functionarea(width:number, shape:string) {
+    if (shape === "circle")
+        return (width/2) * (width/2) * Math.PI;
+    else if (shape === "square")
+        return width * width;
+}
+```
+
+</Col>
+<Col col={2}>
+
+```typescript title="Integer as Type"
+const CIRCLE = 0;
+const SQUARE = 1;
+function area(width: number, shape: number) {
+    if (shape === CIRCLE)
+        return (width/2) * (width/2) * Math.PI;
+    else if (shape === SQUARE)
+        return width * width;
+}
+```
+
+</Col>
+</Row>
+
+### 將魔法數字加入程式碼中
+
+* 幾乎所有人看到magic number都會有反應
+    * 💔 會不會感謝你的用心良苦就難說了
+    * ✅ 這種code很容易被改正
+
+<Row>
+<Col col={2}>
+
+```typescript title="Before"
+const FOUR_THIRDS = 4/3;
+class Sphere {
+    volume() {
+        let result = FOUR_THIRDS;
+        for (let i = 0; i < 3; i++)
+            result = result * this.radius;
+        return result * Math.PI;
+    }
+}
+```
+
+</Col>
+<Col col={2}>
+
+```typescript title="After"
+class Sphere {
+    volume() {
+        let result = 4/3; // Magic
+        for (let i = 0; i < 3; i++)
+            result = result * this.radius;
+        return result * 3.141592653589793; // Magic
+    }
+}
+```
+
+</Col>
+</Row>
+
+### 新增註釋到程式碼中 (Ch8的反重構)
+
+<Row>
+<Col col={2}>
+
+```typescript title="Before"
+function subMin(arr: number[][]) {
+
+    let min = Number.POSITIVE_INFINITY;
+    for (let x = 0; x < arr.length; x++) {
+        for(let y = 0; y < arr[x].length; y++) {
+            min = Math.min(min, arr[x][y]);
+        }
+    }
+}
+
+
+for (let x = 0; x < arr.length; x++) {
+    for(let y = 0; y < arr[x].length; y++) {
+        arr[x][y] -= min;
+    }
+}
+```
+
+</Col>
+<Col col={2}>
+
+```typescript title="After"
+function subMin(arr: number[][]) {
+    // Find miniumn
+    let min = Number.POSITIVE_INFINITY;
+    for (let x = 0; x < arr.length; x++) {
+        for(let y = 0; y < arr[x].length; y++) {
+            min = Math.min(min, arr[x][y]);
+        }
+    }
+}
+
+// Sub from each element
+for (let x = 0; x < arr.length; x++) {
+    for(let y = 0; y < arr[x].length; y++) {
+        arr[x][y] -= min;
+    }
+}
+```
+
+</Col>
+</Row>
+
+### 在程式碼中加入空白
+
+<Row>
+<Col col={2}>
+
+```typescript title="Before"
+let cursor = cursor+1 % arr.length;
+// 可能不是你想要的
+```
+
+</Col>
+<Col col={2}>
+
+```typescript title="After"
+let cursor = (cursor + 1) % arr.length;
+// 凸顯出優先序，而不是依賴運算子本身的優先序
+```
+
+</Col>
+</Row>
+
+
+:::danger Javascript與空白
+在JS中，空白與斷行不會被視為執行的一部份
+```javascript
+// Initial variable
+let init = 20
+
+// Run IIFE
+((data) => {
+    console.log(data+1)
+})(init)
+```
+:::
+
+### 依據命名對事物分組 (11.6的反模式)
+
+* 透過命名的共同字首、字尾，凸顯出參數間的關係
+* 後續執行規則「[封裝資料](/docs/sg/five-lines-of-code/ch11#透過封裝利用通用的字首字尾)」進行修正
+
+<Row>
+<Col col={2}>
+
+```typescript title="Before"
+
+class PopupWindow {
+    private windowPosition: Point2d;
+    private hasFocus: number;
+    private screenWidth: number;
+    private screenHeight: number;
+    private windowSize: Point2d;
+}
+```
+
+</Col>
+<Col col={2}>
+
+```typescript title="After"
+class PopupWindow {
+    private windowPosition: Point2d; // prefix
+    private windowSize: Point2d; // prefix
+    private hasFocus: number;
+    private screenWidth: number; // prefix
+    private screenHeight: number; // prefix
+}
+```
+
+</Col>
+</Row>
+
+
+### 在名稱中加上脈絡
+
+<Row>
+<Col col={2}>
+
+```typescript title="Before"
+function avg(arr: number[]) {
+    return sum(arr) / size(arr);
+}
+function size(arr: number[]) {
+    return arr.length;
+}
+function sum(arr: number[]) {
+    let sum = 0;
+    for (let i = 0; i < arr.length; i++) {
+        sum += arr[i];
+    }
+    return sum;
+}
+```
+
+</Col>
+<Col col={2}>
+
+```typescript title="After"
+function avg_ArrUtil(arr: number[]) {
+    return sum(arr) / size(arr);
+}
+function size_ArrUtil(arr: number[]) {
+    return arr.length;
+}
+function sum_ArrUtil(arr: number[]) {
+    let sum = 0;
+    for (let i = 0; i < arr.length; i++) {
+        sum += arr[i];
+    }
+    return sum;
+}
+```
+
+</Col>
+</Row>
+
+### 建立長方法
+
+* 指行數很長的function
+* 很明顯，引人注目想回來改它
+
+```typescript
+function animate() {
+    if (value >= threshold
+     && banner.state === State.Chosen) {
+        // ...
+    }
+    if (value >= target
+     && banner.state === State.Displaying) {
+        // ...
+    }
+    if (banner.state === State.Completed) {
+        // ...
+    }
+}
+```
+
+
+### 讓方法有很多參數
+
+* 作者最喜歡的一個提醒的方法
+
+```typescript
+function stringConstructor(
+    prefix: string, // 參數很多，引人注目
+    joiner: string,
+    postfix: string,
+    parts: string[]
+) {
+    return prefix + parts.join(joiner) + postfix;
+}
+```
+
+### 使用getter和setter (Ch6的反重構)
+
+* 避免使用全域變數或公開欄位的妥協做法
+
+```typescript
+class Screen {
+    constructor(
+        private width: number,
+        private height: number
+    ) {}
+    getWidth() { return this.width; }
+    getHeight() { return this.height; }
+}
+let screen: Screen;
+```
