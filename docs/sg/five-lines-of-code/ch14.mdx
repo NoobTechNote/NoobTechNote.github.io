@@ -1,0 +1,110 @@
+---
+title: "Ch14: 總結"
+sidebar_position: 14
+---
+
+## 本書的旅程
+
+### Ch1, Ch2：動機
+
+* 重構的目標：將不變條件區域化減少脆弱；減少耦合增加靈活性
+
+### Ch3 ~ Ch6：具體化
+
+* 一個貫穿的重構範例
+* 具體的規則，及執行的細節
+
+### Ch7 ~ Ch13：拓寬視野
+
+* 提升抽象層次
+* 善用工具
+* 更多的重構技巧
+
+## 基本原則
+
+* 尋找「最小」的步驟進行重構
+    * 從可執行的狀態，轉移到另一個可執行狀態
+    * 降低錯誤的風險
+    * 容易在重構過程中改變方向
+* 重構的技能是需要培養、練習、習慣的
+    * 有些高級技巧需要你純熟基礎技巧後，才能掌握的
+* 尋找底層結構
+    * 黏土雕塑家，從一塊黏土開始，慢慢塑造出結構與外觀
+* 「每塊石頭裡都有一尊雕像，雕塑家的任務是發現它」- 米開朗基羅
+* 「繪畫創作是逐步改進產生。由素描開始，然後填入細節。但並不是一個填入的過程，而是在過程中不斷調整。這與程式開發的過程十分相像」- [駭客與畫家](https://zh.wikipedia.org/zh-tw/%E9%BB%91%E5%AE%A2%E4%B8%8E%E7%94%BB%E5%AE%B6)
+
+### 用規則進行實作
+
+* 本書提供的是一個良好的出發點，能夠引發重構的必要性與行動
+* 「規則」只是工具，而不是「定律」
+    * 不要盲目地套用規則
+
+### 團隊優先於個人
+
+* 「如果你想走得快，就單獨行動；如果你想走得遠，就攜手前進」- 非洲諺語
+* 整個團隊都該對code repo負責，並承擔責任
+* 我們希望能快速有信心的修改程式碼，任何會阻擋這個目標的問題都需要被解決
+
+### 簡單化優先於完整性 - 制定規則的設計原則
+
+* 如果看到糟糕的程式碼或問題，想要建立「規則」來禁止時，很容易陷入「泛化」的陷阱
+* 規則都有其適用的「情境」
+    * 必須易於套用，而不是設計一個「萬用的規則」可以套用在很多情境上
+* 「簡單但錯誤」優先於「複雜但正確」
+
+### 使用物件或高階函式
+
+* 本書避免了很多高階函式的用法，例如閉包(Closure)只是為了保持風格一致
+    * 但實際上只要讀起來容易，一樣可以使用
+
+<Row>
+<Col col={2}>
+
+```typescript title="Class Implement"
+class Moo {
+    constructor(name) {
+        this.name = name;
+    }
+    foo(word) {
+        console.log(this.name, "say", word)
+    }
+}
+
+var moo = new Moo('Mohoho');
+moo.foo('hi');
+// Mohoho say hi
+```
+
+</Col>
+<Col col={2}>
+
+```typescript title="Function Implement"
+function Moo(name) {
+    this.name = name;
+    this.foo = function(word) {
+        console.log(this.name, "say", word);
+    };
+}
+
+
+
+var moo = new Moo('Mohoho');
+moo.foo('hi');
+// Mohoho say hi
+```
+
+</Col>
+</Row>
+
+## 旅程的繼續
+
+### 微觀架構
+
+* Clean Code - Robert C. Martin
+* Refactoring - Martin Fowler
+
+### 宏觀架構
+
+* Test-Driven Development - Kent Beck
+* Types and Programming Language - Benjamin C.Pierce
+* Type-Driven Development with Idris - Edwin Brady
