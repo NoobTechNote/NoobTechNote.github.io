@@ -1,0 +1,145 @@
+---
+title: "Ch3: 儲存與索引"
+sidebar_label: "Ch3: 儲存與索引"
+sidebar_position: 1
+---
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+
+## OLTP & OLAP
+
+* 負載的兩種類型
+  * OLTP (Online Transactional Processing)
+  * OLAP (Online Analytical Processing)
+
+|                | OLTP                                         | OLAP                   |
+| -------------- | -------------------------------------------- | ---------------------- |
+| 主要的讀取模式 | 每次查詢少量紀錄，根據key來取得資料          | 聚合大量的紀錄         |
+| 主要的寫入模式 | 隨機存取，從使用者輸入到寫入資料庫的延遲要低 | 大量匯入(ETL)或事件流  |
+| 主要的使用者   | 終端使用者、客戶                             | 內部分析人員，支援決策 |
+| 資料集大小     | GP ~ TB                                      | TP ~ PB                |
+
+
+:::info Discussion
+OLTP的負載需要具備ACID(原子性、一致性、隔離性和持久性)嗎？為什麼？
+:::
+
+## 簡易的OLTP資料庫
+
+### 內容的存放
+
+* Write: O(1)
+* Read: O(N)
+    * If key unique grantee: O(logN)
+
+```shell
+#!/bin/bash
+db_set () {
+  echo "$1,$2" >> simple.db # append only
+}
+
+db_get () {
+  grep "^$1," simple.db | sed -e "s/^$1,//" | tail -n 1
+}
+```
+
+
+### 分區 (Segment)
+
+:::info Discussion
+所有的內容都放在同一個檔案會有什麼問題？
+:::
+
+<Row>
+
+<Col col={2}>
+
+```shell
+123,AAA # deprecated
+456,BBB # deprecated
+789,CCC
+456,DDD
+123,EEE
+
+# 123: EEE, 456: DDD, 789: CCC
+```
+
+</Col>
+
+<Col col={2}>
+
+```shell
+789,CCC
+456,DDD
+123,EEE
+```
+
+</Col>
+</Row>
+
+
+<details>
+  <summary>為什麼不在寫入資料時，直接更新該筆資料所在的列就好？而要採取append的做法？</summary>
+
+  * 循序寫入操作能有較好的效能
+  * 從崩潰回復變簡單
+  * 避免資料碎片化
+
+</details>
+
+### 索引 (Index)
+
+* Write: O(1)
+* Read: O(1)
+
+![fig3.1](./ch3/fig3_1.png)
+
+* 將每個key對應value的offset建立成in-memory的hash table作為索引
+  * 每次寫入新資料時都更新記憶體內的索引
+  * 範例DB：[Bitcask](https://github.com/basho/bitcask)
+    * 所有的key需要能完整地放入memory
+    * 連續寫入；隨機讀取
+    * Value的大小比Key大很多的情境
+
+### 真實世界的問題
+
+* 存放檔案格式
+  * Binary的格式存放資料會比CSV更快
+* 刪除紀錄
+  * 在資料中追加特殊紀錄，用來標示該筆資料已經刪除
+  * 又稱為tombstone
+* 從崩潰回復
+  * 如果索引只存在記憶體中，資料庫重啟會失去索引
+    * 可以在啟動DB engine時讀取所有的segment在記憶體中重建index
+    * Bitcask的做法，會在硬碟中存放每個segment的hash index的snapshot
+* 不完整的寫入
+  * 如果在寫入segment時發生崩潰，該如何處理？
+  * Bitcask在寫入資料時會同時寫入checksum，可以用於檢出/復原資料損壞部分
+    * [Hamming Code](https://zh.wikipedia.org/zh-tw/%E6%B1%89%E6%98%8E%E7%A0%81)
+* 並行控制
+  * 因為Segment是append-only的，因而是不可變的(immutable)
+  * 是thread-safe的，允許被多個執行緒同時存取
+* 索引的局限性
+  * 雜湊索引需要全部放入記憶體中
+    * 很大量的key無法使用
+  * 如果把Hash map放進硬碟，要展現性能會變得更困難
+    * 需要大量的Random Read I/O
+  * 雜湊碰撞問題
+  * 範圍查詢效率不高
+    * 無法查詢key001~key999的所有keys
+    * 只能一個一個key查找
+
+
+## OLTP儲存引擎的分類
+
+### Log Structured 日誌結構
+
+#### SSTable
+#### LSM Tree (Log Structured Merge Tree)
+
+
+### Page Oriented 分頁導向
+
+#### B-Tree
+
