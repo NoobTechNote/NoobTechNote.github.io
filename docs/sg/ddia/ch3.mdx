@@ -47,15 +47,11 @@ db_get () {
 
 ### 分區 (Segment)
 
-:::info Discussion
-所有的內容都放在同一個檔案會有什麼問題？
-:::
-
 <Row>
 
 <Col col={2}>
 
-```shell
+```shell title="Origin Segment"
 123,AAA # deprecated
 456,BBB # deprecated
 789,CCC
@@ -69,7 +65,7 @@ db_get () {
 
 <Col col={2}>
 
-```shell
+```shell title="Compacted Segment"
 789,CCC
 456,DDD
 123,EEE
@@ -78,20 +74,31 @@ db_get () {
 </Col>
 </Row>
 
+:::info Discussion
+所有的內容都放在同一個檔案會有什麼問題？
+:::
+
+
+:::info Discussion
 
 <details>
   <summary>為什麼不在寫入資料時，直接更新該筆資料所在的列就好？而要採取append的做法？</summary>
 
   * 循序寫入操作能有較好的效能
+    * 對SSD來說更顯著
   * 從崩潰回復變簡單
+    * 因為append寫入的資料基本上是imuntable的
   * 避免資料碎片化
 
 </details>
 
+:::
+
 ### 索引 (Index)
 
-* Write: O(1)
-* Read: O(1)
+* 以Hash索引為例
+  * Write: O(1)
+  * Read: O(1)
 
 ![fig3.1](./ch3/fig3_1.png)
 
@@ -106,9 +113,9 @@ db_get () {
 
 * 存放檔案格式
   * Binary的格式存放資料會比CSV更快
-* 刪除紀錄
+* 刪除紀錄的處理
   * 在資料中追加特殊紀錄，用來標示該筆資料已經刪除
-  * 又稱為tombstone
+    * 又稱為tombstone
 * 從崩潰回復
   * 如果索引只存在記憶體中，資料庫重啟會失去索引
     * 可以在啟動DB engine時讀取所有的segment在記憶體中重建index
@@ -131,15 +138,192 @@ db_get () {
     * 只能一個一個key查找
 
 
-## OLTP儲存引擎的分類
+## Log Structured 日誌結構引擎
 
-### Log Structured 日誌結構
+* `Log` 指的是「被循序寫入的」紀錄
+* 上一個小節的例子即是一個Log Structured engine的簡單範例
 
-#### SSTable
-#### LSM Tree (Log Structured Merge Tree)
+### SSTable (Sorted String Table)
+
+* 進階的 Log Structured 儲存用資料結構
+* 相較於上一節的例子，加了兩條規則
+  * 寫入到檔案中的 `key` 要經過<span style={{color: 'red'}}>排序</span>
+  * 每個 `key` 在同一個 Segment <span style={{color: 'red'}}>中只能出現一次</span>
+    * 已經在 Segment compacting 過程中保證
+
+#### SSTable的優勢 1 - 合併Segement的效率
+
+* 只要在單個 Segment 的內容小於 Memory size
+* 能維持高效的 Segment Merge
+  * 相似於 [Merge Sort](https://en.wikipedia.org/wiki/Merge_sort)
+
+![fig3.4](./ch3/fig3_4.png)
+
+#### SSTable的優勢 2 - 自帶索引能力
+
+* 不需要在 Memory 中存放所有的 `key` 就能進行有效率的搜尋
+  * 因 `key` 經過排序，理想情況下，可以達到 O(logN) 的搜尋效率
+  * 類似 [Binary Search](https://en.wikipedia.org/wiki/Binary_search_algorithm)
+* 因為每個 `key` 所存放的 `value` 大小並不是固定的，所以避不掉需要在特定的 key 範圍內 scan 的情境
+  * 將這個索引放在 Memory 內以維持效率
+  * 索引內保存部分的 `key` 的 offset
+* 資料寫入硬碟前可以經過壓縮，再透過上述的 in-memory index 進行索引以減少I/O操作
+
+![fig3.5](./ch3/fig3_5.png)
+
+:::info Discussion
+SSTable看起來很不錯，但key需要保持順序的話，寫入時怎麼維持寫入的效率？
+
+<details>
+<summary>SSTable key的排序</summary>
+
+* 利用「自我平衡樹」類型的資料結構
+  * [紅黑樹](https://zh.wikipedia.org/zh-tw/%E7%BA%A2%E9%BB%91%E6%A0%91)。
+  * [AVL Tree](https://zh.wikipedia.org/zh-tw/AVL%E6%A0%91)。
+
+* 能以任意順序插入keys，並且以經過排序的順序讀取資料
+  * Write: O(logN)
+  * Read: O(logN)
+
+</details>
+
+:::
+
+### LSM Tree (Log Structured Merge Tree)
+
+* 為了提高寫入效能而設計的資料結構
+* 資料寫入時會先放在 in-memory 的資料結構內，稱為memtable
+  * 到達某個閥值才往硬碟寫入，以減少IO操作
+* 定期對硬碟上的資料做壓縮和合併的操作
+* 通常包含多層的資料結構，每一層都會比上一層大很多
+
+Reference: [LSM Tree](https://dev.to/creativcoder/what-is-a-lsm-tree-3d75)
+
+![LSMT](./ch3/lsmt.jpg)
+
+### 崩潰與回復
+
+* 如果資料庫崩潰，資料還存在於 memtable 的資料會遺失
+* 在硬碟上額外保存單獨的 `Log` ，每次進行寫入操作時對其進行Append寫入
+  * 因為僅用在崩潰復原，只要在將memtable的資料寫入SSTable時，就可以刪除
+
+### Log Strcutred 引擎的建構和維護
+
+> 結合SSTable的儲存；LSM Tree的分層
+
+* 寫入時，先寫入記憶體中的平衡樹資料結構
+  * 作為I/O Buffer，直到大小超過某個閥值才對硬碟進行寫入 (通常為幾MB)
+  * 即，memtable
+* 寫入到硬碟時作為SSTable寫入
+  * 因為在 memtable 中讀取出來是有順序的資料，寫入到硬碟時不需額外的排序操作
 
 
-### Page Oriented 分頁導向
+* 讀取時，先嘗試在 memtable 中尋找資料
+  * 找得到就返回結果 (Memory O(logN))
+  * 找不到再依序從硬碟中的 SSTable segment中尋找 (Disk O(logN))
 
-#### B-Tree
+* 背景不定時的進行 Segments 的合併與壓縮動作
 
+### LSM Tree的性能問題
+
+* 在「存取不存在的資料」時，效率會很慢
+  * 要先查memtable
+  * 再查第一層的Segments
+  * 再查下一層的Segments
+  * ...
+* 需要 O(N)的操作
+
+* 利用 [Bloom Filter 布隆過濾器](https://zh.wikipedia.org/zh-tw/%E5%B8%83%E9%9A%86%E8%BF%87%E6%BB%A4%E5%99%A8) 進行協助
+  * Bloom filter 是一種 memory-efficient 的資料結構
+  * 如果查詢結果表示資料不存在，那就一定不存在
+  * 如果查詢結果說資料存在，並不能保證資料「真的」存在
+  * 可以補足 LSM Tree 的缺點
+
+### 小結
+
+* Log structured 的引擎，有 Segment ，需要合併與壓縮
+* 使用 in-memory 的自平衡樹作為 Buffer
+* 額外在記憶體內維護 Hash based 的索引，用來保存「部分的」key 的offset以提升讀取效率
+* 崩潰復原需要額外的，循序寫入的 `Log` 來維持
+* 近代很多新興的資料庫，都是基於SSTable & LSMT 的結構
+  * Google Bigtable
+  * LevelDB
+  * RocksDB
+  * Cassendra
+  * HBase
+  * Lucene (Elasticsearch的底層)
+* LSM Tree 型資料庫，讀寫操作的平均時間複雜度
+  * Write:
+    * Memtable: O(logN)
+    * Disk: O(1)
+  * Read:
+    * O(logN)
+
+## Page Oriented 分頁導向引擎
+
+### B-Tree
+
+* 在資料庫的領域，BTree是較成熟的索引實作
+  * 1970年代就出現
+  * 「傳統」DBMS使用的資料結構
+    * MySQL, PostgreSQL, Oracle, SQL Server, MongoDB...etc.
+* 將資料分成「固定大小」的 Page（或稱為Block）
+  * Page 一般來說為4KB或更大
+  * Page 連 Page，所形成的樹狀結構
+  * 每次讀取或寫入都是以Page為單位
+  * 對底層硬體設計更接近
+    * 這也是傳統RDBMS在架設時，作業系統的Disk format要經過設計的主因
+    * ext4為例， block可以介於 1~64KB
+
+![Btree](./ch3/fig3_6.png)
+
+* BTree在寫入資料時，需要從 root 往下查詢找到該key所屬的Page，將value修改後整個page寫回硬碟
+* 如果目標 Page 剩餘空間不足，需要進行「分支Branching」
+  * 「分支」成兩個半滿的 Page，因此保證了BTree的平衡
+    * 存放 `N` 筆紀錄的BTree，深度總是為 O(logN)
+  * BTree型的資料庫在對「大量寫入請求」效率較低的主因
+
+![BTree](./ch3/fig3_7.png)
+
+* 一個 Page 能夠擁有的 Child Page 數量稱為 Branching Factor
+* 以 Page size 4KB，Branching Factor 500 的BTree來說，可以存放 256TB 的資料
+* 因為會直接「更改Page」複寫原有的資料，對於並行控制要小心處理
+
+### 崩潰與回復
+
+* 在 BTree 的 Page 之間操作資料，若發生崩潰，會得到損壞的 BTree
+* 跟LSM Tree 一樣，為了從崩潰中復原，需要在硬碟中寫入額外的資料結構
+  * 預寫日誌 WAL (Write-ahead Log)
+  * 又稱為re-do Log
+  * 類似 Event sourcing 的做法，對寫入操作做紀錄
+
+
+### BTree的最佳化
+
+* B+ Tree
+  * 為了節省空間，不儲存完整的key
+  * 而只有存放key的縮短版本
+  * 大部分 BTree 型的資料庫，所實際使用的資料結構
+* 對於 range search 的效率不好
+  * 因為需要查每個對應的leaf pages
+  * 實作上，嘗試將leaf pages放在硬碟上相鄰的位置，可以減緩影響
+  * 除了child page的ref之外，額外添加指標到樹中
+    * 兄弟的Page之間查找的效率會變好，提升循序查詢的效能
+
+
+## B-Tree 和 LSM Tree 的比較
+
+|              | BTree                            | LSM Tree                                                 |
+| ------------ | -------------------------------- | -------------------------------------------------------- |
+| Read         | O(logN)                          | O(logN)                                                  |
+| Write        | O(logN)                          | O(logN)                                                  |
+| 寫入額外開銷 | WAL + Tree + 可能需要分支操作    | 壓縮與合併造成的寫入放大                                 |
+| 優勢         | Transation實作較簡單、有更好的讀取效能 | 循序寫入能維持更高的寫入吞吐量、空間利用率高，壓縮得更好 |
+
+## 其他索引結構
+
+## OLTP 和 OLAP
+
+### 資料倉儲
+
+### 行式儲存
