@@ -322,8 +322,159 @@ Reference: [LSM Tree](https://dev.to/creativcoder/what-is-a-lsm-tree-3d75)
 
 ## 其他索引結構
 
-## OLTP 和 OLAP
+** 次索引 ** 也很常見
+
+![](ch2/fig2_1.png)
+
+如圖，可能在user_id行上有一個次索引，這樣就可以在每個表中找到所有屬於同一使用者的資料列。
+
+### 在索引中儲存值
+
+- 索引中的key是查詢所有搜尋的東西，但是value可以是:
+  - 實際的列
+  - 其他地方的列參照
+    - 儲存列的位置稱為堆積檔(heap file)
+
+### 多行索引
+
+- 組合索引(concatenated index)
+  - (lastname, firstname)
+  - 二維位置轉為單一數字當做索引
+  - (red, green, blue)
+  - (date, temperature)
+
+### 全文檢索和模糊索引
+
+- 目前索引都是假設已有明確資料，可以查詢一個key對應的明確值。無法搜尋相似的key，這種**模糊(fuzzy)**查詢需要不同的技術。
+
+- 例如，[Lucene](https://lucene.apache.org/)
+  - Lucene是支持全文檢索和搜尋的開放原始碼程式庫。
+  - 能在一定的編輯距離內搜尋文本中的單字
+    - 編輯距離為1表示已經添加、刪除或替換了一個字母
+
+### 將所有的東西存放在記憶體
+
+- SSD成本較RAM低許多，且資料是持久化的
+- 當RAM便宜，datasets小，是有可能將資料庫保留在記憶體中
+  - 記憶體資料庫(in-memory database)
+    - ex: key-value store的[Memcached](https://zh.wikipedia.org/zh-tw/Memcached)，主要用做快取
+  - 部份in-memory database有特殊硬體，可以實現資料持久性
+  - 當in-memory database重啟時，需要透過一個資料副本，重新載入它的狀態
+
+## 交易處理還是分析處理？
+
+- 線上交易處理(Online Transaction Processing)
+- 線上分析處理(Online Analytic Processing)
+
+:::info
+交易不一定要具有ACID(原子性、一致性、隔離性和持久性)屬性。交易處理(transaction processing)僅僅意味著可以讓客戶端進行低延遲的讀寫，而分批次處理(batch processing)作業，後者只會定期運行(例如每天一次)。我們將在第7章討論ACID的性質，在第10章討論批次處理。
+
+---
+
+原子性(Atomicity):一個事務（transaction）中的所有操作，或者全部完成，或者全部不完成，不會結束在中間某個環節。事務在執行過程中發生錯誤，會被回滾（Rollback）到事務開始前的狀態，就像這個事務從來沒有執行過一樣。即，事務不可分割
+
+一致性(Consistency):在事務開始之前和事務結束以後，資料庫的完整性沒有被破壞。這表示寫入的資料必須完全符合所有的預設約束、觸發器、級聯回滾等
+
+事務隔離(Isolation):資料庫允許多個並發事務同時對其數據進行讀寫和修改的能力，隔離性可以防止多個事務並發執行時由於交叉執行而導致數據的不一致。事務隔離分為不同級別，包括未提交讀（Read uncommitted）、提交讀（read committed）、可重複讀（repeatable read）和串行化（Serializable）
+
+持久性(Durability):事務處理結束後，對數據的修改就是永久的，即便系統故障也不會丟失
+:::
+
+| 屬性 | 交易處理系統(OLTP) | 分析系統(OLAP) |
+| --- | ---------------- | ------------- |
+| 主要的讀取模式 | 每次查詢少量記錄，根據key來取得資料 | 聚合大量的記錄 |
+| 主要的寫入模式 | 隨機存取，從使用者輸入到寫入資料庫的延遲低 | 大量匯入(ETL)或事件流 |
+| 主要使用者 | 終端使用者/客戶，透過web應用 | 內部份析人員，支援決策 |
+| 資料意含 | 資料的最新狀態(當前時刻) | 過往發生的事件歷史 |
+| 資料集大小 | GB ~ TB | TB ~ PB |
 
 ### 資料倉儲
 
-### 行式儲存
+- ETL (extract, transform, load)
+- ![](ch3/fig3_8.png)
+
+### OLTP資料庫和資料倉儲之間的差異
+
+- 因SQL適合分析查詢，資料倉儲常提供SQL的介面。
+  - OLTP也常具有SQL查詢介面，此特性相似
+- 但兩者系統內部針對迥然不同的查詢模式進行最佳化。
+
+## 星狀與雪花:用於分析的基模
+
+- ![](ch3/fig3_9.png)
+- 以一個**事實表(fact table)**為中心
+
+## 行式儲存(column-oriented storage)
+
+![](ch3/fig3_10.png)
+
+- fact table的欄位數量通常超過100個，但通常每一次只會存取4、5個欄位
+
+:::info
+行式儲存在relational data model中是最容易理解的，不過它也同樣適用於非關聯資料。例如，Parquet是一種支援document data model的行儲存格式，它是基於Google的Dremel。
+:::
+
+### 行壓縮
+
+![](ch3/fig3_11.png)
+
+:::info 行式儲存及欄族
+Cassandra和HBase有一個稱為欄族(column families)的概念，源於Google Bigtable。但是，將它們稱作是column-oriented的話恐怕就有誤會了:在每個欄族中，它們將一列中的所有行連同一個row key一起儲存起來，而且它們也不使用行壓縮。因此，Bigtable模型主要仍是row-oriented的。
+:::
+
+#### 記憶體頻寬與向量化處理
+
+- 行式儲存
+  - 減少了需要從磁碟載入的資料量
+  - 可將壓縮過的行資料放到CPU L1快取，進行單純回圈的迭代運算。
+  - 可以用AND / OR直接操作這些資料塊。稱為**向量化處理(vectorized processing)**
+
+### 行儲存中的排序
+
+- 在行式儲存中
+  - 列的存放順序並不重要
+  - 單獨對某一列做排序是沒有意義的
+  - 依據經常存取的欄位進行排序，可提升效能
+  - 排序後有助於壓縮
+
+#### 幾種不同的排序順序
+
+不同的查詢受益於不同的排序順序。
+
+### 行式儲存的寫操作
+
+- 行式儲存，提高了、壓縮和排序都有助於提高查詢的讀取速度。但也增加寫入難度。
+- 行式儲存中，每插入一筆資料，就要更新所有的行檔案
+- 可參考LSM-tree進行寫的操作。
+  - 所有寫操作進入in-memory store，添加到排序的結構中
+  - 累積足夠的寫入時，與磁碟的行檔進行合伴，批次寫入新檔
+
+## 聚合:資料方體與實體化視圖
+
+![](ch3/fig3_12.png)
+
+行式儲存對於分析查詢，效率更佳。
+但針對相同的SQL查詢組合，如SUM, COUNT, AVG...
+每次都要處理原始資料會造成浪費。
+故創建一種快取稱做**實體化視圖(Materialized View)**
+
+圖例為一個**資料方體(data cube)**，挑選date及product兩個維度，針對總和進行一種快取。
+
+## 小結
+
+- 儲存引擎分兩大類
+  - OLTP (Online Transaction Processing)
+  - 資料倉儲及類似的分析系統
+
+- OLTP的兩種流派
+  - 日誌結構派
+    - SSTables (Sorted String Tables)
+    - LSM-Tree (Log-Structured Merge-Tree)
+  - 原地更新派
+    - B-Tree
+
+- 更複雜的索引結構
+  - 多行索引
+  - 全文檢索和模糊索引
+
+- 使用行式儲存來降低磁碟讀取的資料量
