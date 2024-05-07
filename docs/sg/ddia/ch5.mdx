@@ -69,7 +69,7 @@ Replication 意味著在透過網路連線的多臺機器上保留相同資料�
         - Write-ahead log(WAL) shipping
         - Logical (row-based) log replication
         - Trigger-based replication
-    - Solution of Replication Lags
+    - Replication Lag Problems and Solution
         - Reading Your Own Writes
         - Monotonic Reads
         - Consistent Prefix Reads
@@ -85,13 +85,13 @@ Replication 意味著在透過網路連線的多臺機器上保留相同資料�
 ## Leader and Follower
 ![](./ch5/5-3-leader-based-replication.jpg)
 這種複製模式是許多關係資料庫的內建功能，如 PostgreSQL（從 9.0 版本開始）、MySQL、Oracle Data Guard 和 SQL Server 的 AlwaysOn Availability Groups。它也被用於一些 Nonrelational DB，包括 MongoDB。最後，基於領導者的複製並不僅限於資料庫：像 Kafka和 RabbitMQ high available queues 這樣的分散式message brokers 也使用它。某些網路檔案系統，例如 DRBD 這樣的replicated block devices也與之類似。
-## Sync vs. Async Replication
+### Sync vs. Async Replication
 ![](./ch5/5-4-sync-versus-async-follower.jpg)
 **Special case:**
 [Chain Replication](https://www.cs.cornell.edu/home/rvr/papers/OSDI04.pdf)
 (used in Azure Storage and Amazon EBS)
 
-## Setting Up New Followers
+### Setting Up New Followers
 簡單地將資料檔案從一個節點複製到另一個節點通常是不夠的：因為客戶端會不斷向資料庫寫入資料
 
 可以透過 Lock 資料庫來使磁碟上的檔案保持一致(像銀行系統) ，但是這會違背高可用的目標。
@@ -106,10 +106,10 @@ Replication 意味著在透過網路連線的多臺機器上保留相同資料�
 
 建立follower的實際步驟因資料庫而異。有可能手動或自動或者一些神秘的工作流程
 
-## Follower failure: Catch-up recovery
+### Follower failure: Catch-up recovery
 每個 Follower 在 disk 上記錄從 Leader 收到的資料變更。如果 Follower 壞掉重新啟動或斷網，則 Follower 可以從日誌中知道在發生故障之前處理的最後一個Transaction。之後 Follower 可以連線到 Leader，並請求在壞掉期間發生的所有資料變更。
 
-## Leader failure: Failover
+### Leader failure: Failover
 其中一個 Follower 要被 promote 為新的 Leader，需要重新配置客戶端，以將它們的寫操作傳送給新的 Leader，其他 Follower 需要開始拉取來自新 Leader 的資料變更。這個過程被稱為 failover
 
 failover可以手動或自動。自動的failover步驟：
@@ -125,14 +125,14 @@ failover可以手動或自動。自動的failover步驟：
 - Split brain
 - 如何知道 Leader 是真的掛掉了，如果只是Spike，反而會加重負擔
 
-## Implementation of Replication Logs
-### :thumbsdown: Statement-based replication
+### Implementation of Replication Logs
+#### :thumbsdown: Statement-based replication
 複製每個 statement 到 follower 執行，像 SQL statement，但是很多情況會導致 replication 壞掉
 1. nondeterministic function, such as NOW() or RAND() is likely to generate a different value on each replica.
 2. If statements depend on the existing data in the database (e.g., UPDATE ... WHERE ...),  must be executed in exactly the same order on each replica
 3. side effects (e.g., triggers, stored procedures, user-defined functions)
 
-### :thumbsdown: Write-ahead log (WAL) shipping
+#### :thumbsdown: Write-ahead log (WAL) shipping
 usually every write to a database is appended to a log
 - In SSTables and LSM-Trees, WAL is the main place for storage. Log segments are compacted in the background.
 - In B-tree, every modification is first written to a WAL so that the index can be restored to a consistent state after a crash.
@@ -141,8 +141,8 @@ usually every write to a database is appended to a log
 
 缺點：非常底層，無法看懂，跟storage engine耦合，換版本或換storage engine可能會有downtime
 
-### :thumbsup: Logical (row-based) log replication
-不綁定storage engine，可以只儲存作replication所需要的必要資訊
+#### :thumbsup: Logical (row-based) log replication
+不綁定storage engine，可以只儲存作replication所需要的必要資訊，也適合發給外部系統作客製化索引或data warehouse
 logical log  is usually at the granularity of a row:
 - For an inserted row, the log contains the new values of all columns.
 - For a deleted row, the log contains enough information to uniquely identify the
@@ -166,11 +166,56 @@ For Example:
 - Store procedure
 - triggers
 
+## Problems with Replication Lag
+Leader-based replication 適合用在多讀少寫的情況，可以分散讀取的工作負載，但就會遇到必須使用Async Replication所產生的Lag問題
 
+Term: Eventual consistency
+
+### Read Your Own Writes
 ![](./ch5/5-5-write-but-read-nothing.jpg)
+
+Read-your-writes (Read-after-write) consistency: 當使用者重新載入頁面，重新整理時，確保一定看到自己剛剛提交的更新，但不保證看到其他使用者的最新更新
+#### Solutions:
+- 如果是讀自己寫的東西，從 leader 讀，否則從 follower 讀. e.g., twitter, teams
+- 可以根據物件的last updated time，然後再參考 follower latency，來決定幾分鐘以內更新的資料去 leader 讀取，
+- 紀錄使用者最後一次執行寫入的時間，如果follower不夠新，就去找其他可能比較新的follower，但這很依靠時間同步
+- 如果Replica在不同的data center 會增加複雜性
+
+如果是跨裝置，像電腦跟手機要確保能即時看到另一邊的update，這種的 read-your-writes consistency就有更多要考慮的地方
+- 紀錄使用者timestamp不可行，因為裝置不同
+- 網路不同，要確保這些device使用到同一個leader
+
+**Monotonic Read**
 ![](./ch5/5-6-time-go-backward.jpg)
-![](./ch5/5-7-multi-leader.jpg)
-![](./ch5/5-8-write-conflict.jpg)
-![](./ch5/5-9-topology.jpg)
-![](./ch5/5-10-wrong-order-arrive.jpg)
+
+monotonic reads 可以保證這種異常不會發生。這是一個比 強一致性（strong consistency） 更弱，但比 最終一致性（eventual consistency） 更強的保證。當讀取資料時，你可能會看到一箇舊值；單調讀僅意味著如果一個使用者順序地進行多次讀取，則他們不會看到時間回退，也就是說，如果已經讀取到較新的資料，後續的讀取不會得到更舊的資料。
+
+實現方法：每次同一個follower讀，可以用hash uid來指定follower
+
+### Consistent Prefix Reads
+![](./ch5/5-7-see-the-future.jpg)
+consistent prefix reads: This guarantee says that if a sequence of writes happens in a certain order,
+then anyone reading those writes will see them appear in the same order.
+
+一種解決方案是保證資料都寫到相同的partition，但可能沒有效率，後續有一些演算法論討論關於這種因果關係(causality)的問題
+
+### Solutions for Replication Lag
+在使用最終一致的系統時，如果複製延遲增加到幾分鐘甚至幾小時，則應該考慮應用程式的行為。如果答案是 “沒問題”，那很好。但如果結果對於使用者來說是不好的體驗，那麼設計系統來提供更強的保證是很重要的。明明是非同步複製卻假設複製是同步的，這是很多麻煩的根源。
+
+但在應用程式程式碼中處理這些問題是複雜的，容易出錯。
+
+如果應用程式開發人員不必擔心微妙的複製問題，並可以信賴他們的資料庫 “做了正確的事情”，那該多好呀。這就是 transaction 存在的原因：資料庫透過事務提供強大的保證，所以應用程式可以更加簡單。
+
+## Multi-Leader Replication
+Leader-based replication has one major downside: there is only one leader, and all
+writes must go through it.
+
+Multi-leader allow more than one node to accept writes.
+
+Todo
+
+![](./ch5/5-8-multi-leader.jpg)
+![](./ch5/5-9-write-conflict.jpg)
+![](./ch5/5-10-topology.jpg)
+![](./ch5/5-11-wrong-order-arrive.jpg)
 
