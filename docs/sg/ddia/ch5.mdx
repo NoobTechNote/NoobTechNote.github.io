@@ -91,7 +91,6 @@ Replication 意味著在透過網路連線的多臺機器上保留相同資料�
 [Chain Replication](https://www.cs.cornell.edu/home/rvr/papers/OSDI04.pdf)
 (used in Azure Storage and Amazon EBS)
 
-
 ## Setting Up New Followers
 簡單地將資料檔案從一個節點複製到另一個節點通常是不夠的：因為客戶端會不斷向資料庫寫入資料
 
@@ -115,19 +114,58 @@ Replication 意味著在透過網路連線的多臺機器上保留相同資料�
 
 failover可以手動或自動。自動的failover步驟：
 
-1. 確認 Leader 失效。有很多事情可能會出錯：崩潰、停電、網路問題等等。沒有萬無一失的方法，所以大多數系統只是簡單使用Timeout：節點頻繁地相互來回傳遞訊息，如果一個節點在一段時間內（例如 30 秒）沒有響應，就認為它掛了
-2. 選擇一個新的 Leader 。這可以透過選舉過程（ Leader 由剩餘副本以多數選舉產生）來完成(需要共識演算法)。
+1. 確認 Leader 失效。有很多事情可能會出錯：崩潰、停電、網路問題等等。沒有萬無一失的方法，所以大多數系統只是簡單使用Timeout
+2. 選擇一個新的 Leader 。這可以透過選舉過程（ Leader 由剩餘 Follower 以多數選舉產生）來完成(需要共識演算法)。
 3. 重新配置系統以啟用新的 Leader。客戶端現在需要將它們的寫請求傳送給新 Leader。如果舊 Leader 恢復，可能仍然認為自己是 Leader ，而沒有意識到其他副本已經讓它失去領導權了。系統需要確保舊 Leader 意識到新 Leader 的存在，併成為一個 Follower 。
 
 故障切換的過程中有很多地方可能出錯：
 
-- 如果使用非同步複製，則新 Leader 可能沒有收到老 Leader 宕機前最後的寫入操作。在選出新 Leader 後，如果老 Leader 重新加入叢集，又該如何處理這些老 Leader 尚未複製的寫入？在此期間，新 Leader 可能已經收到了與老 Leader 尚未複製的寫入相沖突的寫入。最常見的解決方案是簡單丟棄老 Leader 未複製的寫入，這很可能打破客戶對於資料永續性的期望。
+- 新 Leader 沒有收到老 Leader 掛掉前最後的寫入操作。
+- 如果資料庫需要和其他外部儲存相協調，那麼丟棄寫入內容是極其危險的操作。 Example: 例如在 GitHub 的一場事故中，一個過時的 MySQL Follower 被提升為Leader。資料庫使用自增 ID 作為Primary，因為新主庫的計數器落後於老主庫的計數器，所以新主庫重新分配了一些已經被老主庫分配掉的 ID 作為主鍵。這些主鍵也在 Redis 中使用，主鍵重用使得 MySQL 和 Redis 中的資料產生不一致，最後導致一些私有資料洩漏到錯誤的使用者手中。
+- Split brain
+- 如何知道 Leader 是真的掛掉了，如果只是Spike，反而會加重負擔
 
-- 如果資料庫需要和其他外部儲存相協調，那麼丟棄寫入內容是極其危險的操作。例如在 GitHub 【13】的一場事故中，一個過時的 MySQL  Follower 被提升為 Leader 。資料庫使用自增 ID 作為主鍵，因為新 Leader 的計數器落後於老 Leader 的計數器，所以新 Leader 重新分配了一些已經被老 Leader 分配掉的 ID 作為主鍵。這些主鍵也在 Redis 中使用，主鍵重用使得 MySQL 和 Redis 中的資料產生不一致，最後導致一些私有資料洩漏到錯誤的使用者手中。
+## Implementation of Replication Logs
+### :thumbsdown: Statement-based replication
+複製每個 statement 到 follower 執行，像 SQL statement，但是很多情況會導致 replication 壞掉
+1. nondeterministic function, such as NOW() or RAND() is likely to generate a different value on each replica.
+2. If statements depend on the existing data in the database (e.g., UPDATE ... WHERE ...),  must be executed in exactly the same order on each replica
+3. side effects (e.g., triggers, stored procedures, user-defined functions)
 
-- 發生某些故障時（見 第八章）可能會出現兩個節點都以為自己是 Leader 的情況。這種情況稱為 腦裂（split brain），非常危險：如果兩個 Leader 都可以接受寫操作，卻沒有衝突解決機制（請參閱 “多主複製”），那麼資料就可能丟失或損壞。一些系統採取了安全防範措施：當檢測到兩個 Leader 節點同時存在時會關閉其中一個節點 2，但設計粗糙的機制可能最後會導致兩個節點都被關閉【14】。
+### :thumbsdown: Write-ahead log (WAL) shipping
+usually every write to a database is appended to a log
+- In SSTables and LSM-Trees, WAL is the main place for storage. Log segments are compacted in the background.
+- In B-tree, every modification is first written to a WAL so that the index can be restored to a consistent state after a crash.
 
- Leader 被宣告死亡之前的正確超時應該怎麼配置？在 Leader 失效的情況下，超時時間越長意味著恢復時間也越長。但是如果超時設定太短，又可能會出現不必要的故障切換。例如，臨時的負載峰值可能導致節點的響應時間增加到超出超時時間，或者網路故障也可能導致資料包延遲。如果系統已經處於高負載或網路問題的困擾之中，那麼不必要的故障切換可能會讓情況變得更糟糕。
+好處：WAL 包含了所有資料庫寫入的append-only sequence of bytes。可以使用完全相同的日誌在另一個節點上構建一模一樣的 replica
+
+缺點：非常底層，無法看懂，跟storage engine耦合，換版本或換storage engine可能會有downtime
+
+### :thumbsup: Logical (row-based) log replication
+不綁定storage engine，可以只儲存作replication所需要的必要資訊
+logical log  is usually at the granularity of a row:
+- For an inserted row, the log contains the new values of all columns.
+- For a deleted row, the log contains enough information to uniquely identify the
+row that was deleted. Typically this would be the primary key, but if there is no
+primary key on the table, the old values of all columns need to be logged.
+- For an updated row, the log contains enough information to uniquely identify
+the updated row, and the new values of all columns (or at least the new values of
+all columns that changed).
+
+Ref:
+- https://www.postgresql.org/docs/current/logical-replication.html
+- https://dev.mysql.com/doc/refman/8.0/en/replication.html
+
+### :neutral_face: Trigger-based replication
+
+客製化工具，只需複製自己指定範圍的資料，或者在自己想要的時間trigger
+
+
+For Example:
+- [Oracle GoldenGate](https://www.oracle.com/integration/goldengate/)
+- Store procedure
+- triggers
+
 
 ![](./ch5/5-5-write-but-read-nothing.jpg)
 ![](./ch5/5-6-time-go-backward.jpg)
