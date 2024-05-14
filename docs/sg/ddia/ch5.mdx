@@ -121,7 +121,7 @@ failover可以手動或自動。自動的failover步驟：
 故障切換的過程中有很多地方可能出錯：
 
 - 新 Leader 沒有收到老 Leader 掛掉前最後的寫入操作。
-- 如果資料庫需要和其他外部儲存相協調，那麼丟棄寫入內容是極其危險的操作。 Example: 例如在 GitHub 的一場事故中，一個過時的 MySQL Follower 被提升為Leader。資料庫使用自增 ID 作為Primary，因為新主庫的計數器落後於老主庫的計數器，所以新主庫重新分配了一些已經被老主庫分配掉的 ID 作為主鍵。這些主鍵也在 Redis 中使用，主鍵重用使得 MySQL 和 Redis 中的資料產生不一致，最後導致一些私有資料洩漏到錯誤的使用者手中。
+- 如果資料庫需要和其他外部儲存相協調，那麼丟棄寫入內容是極其危險的操作。 Example: 例如在 GitHub 的一場事故中，一個過時的 MySQL Follower 被提升為Leader。資料庫使用自增 ID 作為Primary，因為新Leader的計數器落後於老Leader的計數器，所以新Leader重新分配了一些已經被老Leader分配掉的 ID 作為主鍵。這些主鍵也在 Redis 中使用，主鍵重用使得 MySQL 和 Redis 中的資料產生不一致，最後導致一些私有資料洩漏到錯誤的使用者手中。
 - Split brain
 - 如何知道 Leader 是真的掛掉了，如果只是Spike，反而會加重負擔
 
@@ -214,12 +214,11 @@ Multi-leader allow more than one node to accept writes.
 
 multi-leader (also known as master–master or active/active replication).
 ### Use Cases for Multi-Leader Replication
-在單個數據中心內部使用多個主庫的配置沒有太大意義，因為其導致的複雜性已經超過了能帶來的好處。但在一些情況下，這種配置也是合理的。
+在單個數據中心內部使用多個Leader的配置沒有太大意義，因為其導致的複雜性已經超過了能帶來的好處。但在一些情況下，這種配置也是合理的。
 
 #### Multi-datacenter operation
 ![](./ch5/5-8-multi-leader.jpg)
 接下來比較多資料中心情況下，single-leader跟multi-leader的適應情況
-- Performance
 
 |   |  Single-leader | Multi-leader |
 |---|---|---|
