@@ -212,10 +212,90 @@ writes must go through it.
 
 Multi-leader allow more than one node to accept writes.
 
-Todo
+multi-leader (also known as master–master or active/active replication).
+### Use Cases for Multi-Leader Replication
+在單個數據中心內部使用多個主庫的配置沒有太大意義，因為其導致的複雜性已經超過了能帶來的好處。但在一些情況下，這種配置也是合理的。
 
+#### Multi-datacenter operation
 ![](./ch5/5-8-multi-leader.jpg)
+接下來比較多資料中心情況下，single-leader跟multi-leader的適應情況
+- Performance
+
+|   |  Single-leader | Multi-leader |
+|---|---|---|
+| Performance | 每個寫入都要跨region寫入到Leader所在的datacenter，違反了使用多datacenter的目的| 直接寫入到最近的datacenter，再replicate到其他datacenter|
+| Tolerance of datacenter outages | Failover 把其他datacenter的follower提升成 Leader | 其他datacenter leader正常執行，壞掉的datacenter後來再catch-up|
+| Tolerance of network problems | 跨Datacenter的網路通常要經過public internet會很不穩定| 通常會比跨datacenter傳輸穩定|
+
+各資料庫多使用外部工具來支援
+- Tungsten Replicator for MySQL
+- BDR for PostgreSQL
+- GoldenGate for Oracle
+
+雖然multi-leader有很多好處，但有一個大缺點：相同資料可能在不同datacenters同時被修改，必須要解conflict
+由於多主複製在許多資料庫中都屬於改裝的功能，所以常常存在微妙的配置缺陷，且經常與其他資料庫功能之間出現意外的反應。
+比如
+- autoincrementing keys
+- triggers
+- integrity constraint
+
+等都可能會有麻煩。因此，多主複製往往被認為是危險的領域，應儘可能避免
+
+#### Clients with offline operation
+Example: Calendar, notion
+每個device就像一個datacenter
+
+#### Collaborative editing
+Example: Google doc, Wiki
+
+
+### Handling Write Conflicts
 ![](./ch5/5-9-write-conflict.jpg)
+
+#### Synchronous versus asynchronous conflict detection
+基本上不可能用sync conflict detection，那你乾脆用single-leader
+
+#### Conflict avoidance
+如果能保證某些特定寫入只會到同個Leader，這樣就沒有conflict了
+舉例像某些客戶永遠只寫入特定的Leader，對單一個客戶來說，他只有single-leader
+但客戶有可能會出國，這時候就有可能要換datacenter
+
+#### Converging toward a consistent state
+讓conflict 收斂到一個值
+- 給每個write一個unique ID (e.g., timestamp, UUID, hash value)，值比較高的獲勝，如果使用timestamp，這種方法叫做 last write win (LWW)，雖然LWW很流行，但有可能會造成data loss
+- 給每個replica一個ID, 高的贏，一樣有可能有data loss
+- 把值merge或concat起來 (e.g., B/C)
+- 通通寫進去，讀出來的時候讓user做選擇
+
+#### Custom conflict resolution logic
+- On Write: 偵測到conflict，trigger conflict handler，讓用戶自己寫邏輯去解 (e.g., [Bucardo](https://bucardo.org/Bucardo/operations/conflict_handling))
+- On Read: all the conflicting writes are stored. When the data is read, app resolve the conflict, and write the result back to the database. CouchDB works this way.
+
+#### Automatic Conflict Resolution
+- Conflict-free replicated datatypes (CRDTs)
+    - https://zh.wikipedia.org/zh-tw/%E6%97%A0%E5%86%B2%E7%AA%81%E5%A4%8D%E5%88%B6%E6%95%B0%E6%8D%AE%E7%B1%BB%E5%9E%8B
+    - https://redis.io/active-active/
+- Mergeable persistent data structures
+- Operational transformation
+    - https://en.wikipedia.org/wiki/Operational_transformation
+
+
+什麼是conflict這件事會在Transaction那張深刻討論
+
+
+### Multi-Leader Replication Topologies
 ![](./ch5/5-10-topology.jpg)
+The most general topology is all-to-all.
+MySQL by default supports only a circular topology
 ![](./ch5/5-11-wrong-order-arrive.jpg)
+problem of causality
+
+conflict detection techniques are poorly implemented in many multi-leader
+replication systems. For example, PostgreSQL BDR does not
+provide causal ordering of writes, and Tungsten Replicator for MySQL doesn’t
+even try to detect conflicts [34].
+
+If you are using a system with multi-leader replication, it is worth being aware of
+these issues, carefully reading the documentation, and thoroughly testing your database
+to ensure that it really does provide the guarantees you believe it to have.
 
