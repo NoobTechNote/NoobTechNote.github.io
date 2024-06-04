@@ -586,7 +586,9 @@ COMMIT;
 
 ## Take Away
 
+* 明白應用程式對於db的操作會在各種層面遭遇故障 (所以原子性很重要)
 * 知道資料庫隔離保證有不同等級
 * 善用原子自增SQL語法，避免 lost update
 * 對於Phantom幻讀造成的應用程式功能異常有awareness
+* race conditon, race conditon and race conditon
 * 知道分散式資料庫對於交易的ACID保證會有所犧牲
